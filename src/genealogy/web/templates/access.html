@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block scripts %}<script type="module" src="/static/access.js?v=5"></script>{% endblock %}
+{% block content %}
+<section class="panel access-panel" data-access-state="{{ access_state }}" data-return-to="{{ return_to }}"{% if completion %} data-completion{% endif %}>
+<p class="eyebrow">{{ site_name }}</p><h1>Family access</h1>
+{% if completion or access_state == 'anonymous' %}
+<p>{% if completion %}Enter the email address that received this link to finish signing in.{% else %}Sign in with Google or an email link. Family access is authorized separately.{% endif %}</p>
+{% if not completion %}
+<button id="google-signin" type="button" disabled aria-describedby="google-help">Continue with Google</button>
+<p id="google-help">Choose your Google account, or use an email link below.</p>
+{% endif %}
+<form id="signin"><label for="email">Email address</label><input id="email" name="email" type="email" autocomplete="email" required maxlength="254">
+<button type="submit">{% if completion %}Finish signing in{% else %}Email me a sign-in link{% endif %}</button></form>
+{% elif access_state == 'approved' %}
+<p>Your family access is approved.</p><p><a href="/me">Open my profile</a> · <a href="/">Explore the archive</a></p>
+{% elif access_state == 'revoked' %}
+<p>Your family access is no longer active. You can still explore the public archive or ask for a review.</p>
+{% else %}
+<p>Your family access needs review. If you have already sent a request, no further action is needed.</p>
+{% endif %}
+{% if not completion and access_state in ['pending','revoked'] %}
+<form id="access-request"><label for="explanation">How are you connected to the family?</label>
+<p id="explanation-help">A short explanation is enough. Please omit identity documents, phone numbers, and other sensitive details.</p>
+<textarea id="explanation" name="explanation" maxlength="2000" rows="5" aria-describedby="explanation-help"></textarea>
+<button type="submit">Request review</button></form>
+{% endif %}
+{% if access_state != 'anonymous' %}<button id="logout" type="button">Sign out</button>{% endif %}
+<p id="access-result" role="status" aria-live="polite"></p>
+<noscript><p>JavaScript is required for family sign-in. The public archive remains available.</p></noscript>
+<p><a href="/">Continue to the public archive</a></p>
+</section>
+{% endblock %}

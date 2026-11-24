@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>{{ title }} · {{ site_name }}</title><meta name="description" content="Family history, its records, and the questions still being resolved.">
+<link rel="stylesheet" href="/static/site.css?v=10">
+{% if not static_error %}<script src="/static/navigation.js?v=4" defer></script>{% endif %}
+{% if family_access %}<script src="/static/family-session.js?v=4" defer></script>{% endif %}
+{% block scripts %}{% endblock %}</head>
+<body{% if family_access and public_document %} data-public-alternative{% endif %}{% if public_fallback and not static_error %} data-public-fallback{% endif %}{% if family_access and not access_current %} data-family-document{% endif %}><a class="skip" href="#main">Skip to content</a>
+<header class="site-header"><a class="brand" href="/">{% set brand = site_name.partition(" ") %}{{ brand[0] }}{% if brand[2] %} <span>{{ brand[2] }}</span>{% endif %}</a>
+{% if not static_error %}
+<details class="site-menu" data-site-menu><summary><span class="menu-symbol" aria-hidden="true">☰{% if family_access %}<svg class="family-access-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3 11 12 3l9 8M5 10v11h5v-7h4v7h5V10"/></svg>{% endif %}</span> Menu{% if family_access %}<span class="sr-only">, family access active</span><span class="access-tooltip" aria-hidden="true">Family access active: you can see family-only pages</span>{% endif %}</summary>
+<nav aria-label="Main"><a href="/">Home</a><a href="/people">People</a><a href="/sources">Sources</a><a href="/about">About this archive</a><a data-access-link href="{{ access_url|default('/access') }}"{% if access_current %} aria-current="page"{% endif %}>{% if access_state == 'approved' %}Family access active{% elif access_state == 'public-only' %}Browsing public pages · check family access{% elif access_state == 'anonymous' %}Sign in for family access{% elif access_state == 'pending' %}Signed in · access pending{% elif access_state == 'revoked' %}Family access inactive{% else %}Family access{% endif %}</a>{% if family_access and feedback_enabled %}<a class="feedback-menu-link" href="{{ feedback_url|default('/feedback') }}">Suggest a change</a>{% endif %}{% if family_access %}<a href="/me">My profile</a>{% endif %}</nav>
+</details>
+{% endif %}</header>
+<main id="main" tabindex="-1">{% block content %}{% endblock %}</main>
+</body></html>

@@ -1,0 +1,67 @@
+{% from "person_indicators.html" import indicators %}
+{% macro person(p, tree=false) %}
+<article class="person-card"><div class="person-heading"><h3><a href="{{ record_url('family', p.id) if tree else profile_url(p) }}">{{ p.name }}</a></h3>{{ indicators(p) }}{% if p.kind != 'Person' %}<p class="eyebrow">{{ p.kind }}</p>{% endif %}</div>
+{% if p.matched_names %}{% for n in p.matched_names %}<p class="muted">Matched {{ "record name" if n.record_name else "name" }}: <a href="{{ record_url('assertions', n.id) }}">{{ n.name }}</a>{% if n.status != 'Current conclusion' %} · {{ n.status }}{% endif %}</p>{% endfor %}
+{% else %}{% for n in (p.name_details | default([]) | rejectattr('name', 'equalto', p.name) | list)[:1] %}{% if n.name != p.name %}<p class="muted">{{ n.label }}: {{ n.name }}</p>{% endif %}{% endfor %}{% endif %}
+{% if p.name_context %}<p class="muted">{{ p.name_context }}</p>{% endif %}
+{% if p.compact_dates %}<p class="card-dates">{{ p.compact_dates | join(' · ') }}</p>{% endif %}
+{% if p.card_place and not p.name_context %}<p class="muted">{{ p.card_place }}</p>{% endif %}
+{% for context in (p.context | default([]))[:1] %}<p class="card-context"><a href="{{ context.url }}">{{ context.text }}</a></p>{% endfor %}
+{% if p.relationship %}<p>{{ p.relationship }}</p>{% endif %}
+{% if p.identity_state %}<p>{{ p.identity_state | capitalize }} identity connection</p>{% endif %}
+{% for c in p.claims | default([]) %}<p><span class="badge {{ c.collection }}">{{ c.status }}</span> <a href="{{ record_url('assertions', c.id) }}" aria-label="Evidence: {{ p.name }}{% for d in p.dates %} — {{ d.label }}: {{ d.text }}{% endfor %} — {{ p.relationship }} — {{ c.status }} — claim {{ loop.index }}">Inspect relationship</a></p>{% endfor %}</article>
+{% endmacro %}
+{% macro locator(segments) -%}
+{% for segment in segments %}{% if segment.url %}<a href="{{ segment.url }}" target="_blank" rel="noopener noreferrer">{{ segment.label }}<span class="sr-only"> (external site, opens in new tab)</span></a>{% else %}{{ segment.text }}{% endif %}{% endfor %}
+{%- endmacro %}
+{% macro citation(c, anchor=false, heading_level=4, show_source_link=true, citation_number=none) %}
+<div class="citation"{% if anchor %} id="{{ c.id }}"{% endif %}><h{{ heading_level }}>{% if show_source_link %}<a href="{{ record_url('sources', c.source.id) }}">{{ c.source.title }}</a>{% else %}Citation {{ citation_number }}{% endif %}</h{{ heading_level }}>
+{% if c.stance %}<p>{{ c.stance | capitalize }} · {{ c.explicitness | replace('_',' ') }}</p>{% endif %}
+<p class="muted">Inspection: {{ c.inspection | replace('_',' ') }}</p>
+{% if c.stance and c.locations | length > 1 %}<p class="muted">All destinations recorded for this citation are listed below. Some destinations may relate to other claims that cite the same source.</p>{% endif %}
+{% if c.locations %}<ul class="evidence-locations">{% for location in c.locations %}<li>
+<p class="eyebrow">{{ location.kind_label }}{% if location.host %} · {{ location.host }}{% endif %}</p>
+<p class="location-title">{% if location.url %}<a href="{{ location.url }}"{% if location.kind != 'hosted_copy' %} target="_blank"{% endif %} rel="noopener noreferrer">{{ location.label }}{% if location.kind != 'hosted_copy' %}<span class="sr-only"> (external site, opens in new tab)</span>{% endif %}</a>{% else %}{{ location.label }}{% endif %}</p>
+{% if location.detail %}<p>{{ location.detail }}</p>{% endif %}
+{% if location.access_note %}<p class="muted">{{ location.access_note }}</p>{% endif %}
+{% if location.kind == 'hosted_copy' and not location.url %}<p class="muted">This copy is not available to open on the site.</p>{% endif %}
+</li>{% endfor %}</ul><details class="original-citation"><summary>Original citation text</summary><p class="locator">{{ locator(c.segments) }}</p></details>
+{% else %}<p class="locator">{{ locator(c.segments) }}</p>{% endif %}
+{% if c.transcription %}<blockquote>{{ c.transcription }}</blockquote>{% endif %}
+</div>
+{% endmacro %}
+{% macro claim(c, standalone=false) %}
+<article class="claim {{ c.collection }}" id="{{ c.id }}"><div class="claim-heading"><h{{ 2 if standalone else 3 }}>{{ c.label }}</h{{ 2 if standalone else 3 }}><span class="badge {{ c.collection }}">{{ c.status }}</span></div>
+{% if c.text %}<p>{{ c.text }}</p>{% endif %}
+{% if c.name_context %}<p class="muted">{{ c.name_context }}</p>{% endif %}
+{% for usage in c.name_usage | default([]) %}<p>{{ usage.label }}: {{ usage.text }}</p>{% endfor %}
+{% if c.date %}<p class="date">{{ c.date.text }}</p>
+{% if c.date.normalized and c.date.normalized != c.date.raw %}<p class="muted">Normalized date: {{ c.date.normalized }}{% if c.date.precision and c.date.precision != 'exact' %} ({{ c.date.precision }}){% endif %}</p>{% endif %}
+{% if c.date.calendar %}<p class="muted">Calendar: {{ c.date.calendar | replace('_',' ') }}</p>{% endif %}
+{% if c.date.interpretation_note %}<p>{{ c.date.interpretation_note }}</p>{% endif %}{% endif %}
+{% if c.place %}<p>{{ c.place }}</p>{% endif %}
+{% for p in c.references %}<p>{{ p.role }}: <a href="{{ p.url }}">{{ p.name }}</a> <span class="muted">{{ p.kind }}</span></p>{% endfor %}
+{% if c.evidence %}<details{% if standalone %} open{% endif %}><summary>{% if c.historical_claim_detail %}Historical claim detail{% else %}Inspect evidence{% endif %}</summary>{% if c.historical_claim_detail %}<p><strong>Qualified wording retained with this claim:</strong> {{ c.historical_claim_detail }}</p>{% endif %}<dl class="dimensions"><div><dt>Research status</dt><dd>{{ c.status }}</dd></div><div><dt>Evidence strength</dt><dd>{{ c.grade }}</dd></div><div><dt>Origin</dt><dd>{{ c.origin }}</dd></div><div><dt>Identity</dt><dd>{% if c.label == 'Identity connection' or c.label == 'Separate identities' %}{{ c.text }}{% else %}See record subjects and citations{% endif %}</dd></div></dl>
+{% for e in c.evidence %}{{ citation(e, heading_level=3 if standalone else 4) }}{% endfor %}</details>{% endif %}
+{% if not standalone %}<a class="claim-link" href="{{ record_url('assertions', c.id) }}">Open claim</a>{% endif %}</article>
+{% endmacro %}
+
+{% macro relationship_row(p) %}
+<li class="relationship-row">
+<div><a class="relative-name" href="{{ profile_url(p) }}">{{ p.name }}</a>
+{% if p.dates %}<p class="relative-dates">{% for d in p.dates %}{{ d.label }}: {{ d.text }}{% if d.uncertain %} ({{ d.status }}){% endif %}{{ " · " if not loop.last }}{% endfor %}</p>{% endif %}
+{% if p.places %}<p class="muted">{{ p.places | join(' · ') }}</p>{% endif %}
+{% if p.recorded %}<p><a href="{{ p.recorded.url }}">{{ p.recorded.text }}</a></p>{% endif %}
+<p class="relationship-label">{{ p.relationship }}</p>
+{% if p.status_tier == 'uncertain' %}<span class="badge alternatives">{% if p.claims | selectattr('status', 'equalto', 'Sources disagree') | list %}Sources disagree{% elif p.claims | selectattr('collection', 'equalto', 'alternatives') | list %}Still being resolved{% elif p.group == 'Identity' %}Identity not confirmed{% else %}Roles not specified{% endif %}</span>{% endif %}
+</div>
+<details><summary aria-label="Relationship evidence for {{ p.name }}{% for d in p.dates %} — {{ d.label }}: {{ d.text }}{% endfor %}">Relationship evidence for {{ p.name }}</summary>
+{% for c in p.claims %}<p><span class="badge {{ c.collection }}">{{ c.status }}</span> <a href="{{ record_url('assertions', c.id) }}" aria-label="Evidence: {{ p.name }}{% for d in p.dates %} — {{ d.label }}: {{ d.text }}{% endfor %} — {{ p.relationship }} — {{ c.status }} — claim {{ loop.index }}">{{ c.label }}{% if c.date %} · {{ c.date.text }}{% endif %}</a></p>{% endfor %}
+</details></li>
+{% endmacro %}
+{% macro relationships(model) %}
+{% if model.groups %}<section aria-labelledby="family-heading"><h2 id="family-heading">Family</h2>
+{% for label, relatives in model.groups.items() %}<section aria-labelledby="relationship-{{ label | lower }}"><h3 id="relationship-{{ label | lower }}">{{ label }}</h3><ul class="relationship-list">{% for p in relatives %}{{ relationship_row(p) }}{% endfor %}</ul></section>{% endfor %}</section>{% endif %}
+{% if model.uncertain %}<section aria-labelledby="uncertain-heading"><h2 id="uncertain-heading">Uncertain relationships</h2><p>These connections remain qualified or unresolved.</p>{% if model.uncertain | selectattr("group", "equalto", "Identity") | list %}<p>Possible identity matches connect separate profiles. They do not establish parentage or combine the people.</p>{% endif %}<ul class="relationship-list">{% for p in model.uncertain %}{{ relationship_row(p) }}{% endfor %}</ul></section>{% endif %}
+{% if model.other_connections %}<section aria-labelledby="connections-heading"><h2 id="connections-heading">Other documented connections</h2><ul class="relationship-list">{% for p in model.other_connections %}{{ relationship_row(p) }}{% endfor %}</ul></section>{% endif %}
+{% endmacro %}

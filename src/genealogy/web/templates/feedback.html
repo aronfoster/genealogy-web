@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block scripts %}<script src="/static/feedback.js?v=3" defer></script>{% endblock %}
+{% block content %}
+<section class="feedback-page">
+<h1>Suggest a change</h1>
+<p class="feedback-intro">Help us make our family history more complete and accurate. Share a correction, suggest a relative, or tell us about something that needs attention.</p>
+<form class="feedback-form" action="/api/feedback" method="post" data-feedback-form>
+<fieldset>
+<legend>What would you like to share?</legend>
+<label class="feedback-choice"><input type="radio" name="kind" value="correction" checked><span><strong>Suggest a correction</strong><span>Something inaccurate, incomplete, or uncertain in the family history.</span></span></label>
+<label class="feedback-choice"><input type="radio" name="kind" value="add_person"><span><strong>Help complete the family tree</strong><span>Someone is missing, or a family relationship needs to be added or changed.</span></span></label>
+<label class="feedback-choice"><input type="radio" name="kind" value="wording"><span><strong>Make something clearer</strong><span>Improve the writing, layout, pictures, or how information is displayed.</span></span></label>
+<label class="feedback-choice"><input type="radio" name="kind" value="problem"><span><strong>Report a website problem</strong><span>Something isn't loading or working the way it should.</span></span></label>
+<label class="feedback-choice"><input type="radio" name="kind" value="other"><span><strong>Something else</strong><span>Anything that doesn't fit the other choices.</span></span></label>
+</fieldset>
+<div class="feedback-message"><label for="feedback-message">Tell us more</label>
+<textarea id="feedback-message" name="message" rows="6" maxlength="4000" required aria-describedby="feedback-helper"></textarea>
+<p id="feedback-helper" class="feedback-helper">Tell us what could be corrected and what you think it should say. It's fine to be unsure.</p></div>
+{% if page_path %}<label class="feedback-context"><input type="checkbox" name="includePage" value="{{ page_path }}" checked><span>Include the page I'm viewing</span></label>{% endif %}
+<p class="feedback-privacy">Your suggestion and sign-in information will be shared privately with the archive administrator and the AI tools used to review submissions. Nothing is published automatically.</p>
+<div class="feedback-actions"><button type="submit" disabled>Send suggestion</button><button type="button" data-feedback-new hidden>Send another suggestion</button></div>
+<p class="feedback-status" role="status" aria-live="polite" aria-atomic="true" tabindex="-1"></p>
+<p data-feedback-signin hidden><a href="/access?next=/feedback" target="_blank" rel="noopener">Sign in again (opens a new tab)</a>. Return to this tab to send your suggestion.</p>
+<p class="feedback-retry" hidden>Try this same suggestion again to check for a receipt. Keep this page open until you see a confirmation; contact the archive administrator if it stays unconfirmed.</p>
+<noscript><p>Sending a suggestion requires JavaScript. Please enable it in your browser, then reload this page.</p></noscript>
+</form>
+</section>
+{% endblock %}

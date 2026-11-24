@@ -1,0 +1,1150 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "oneOf": [
+    {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "id": {
+          "type": "string",
+          "pattern": "^(per|psn|asn|src|cit|plc|ast|nar|con|rq)_[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+        },
+        "type": {
+          "const": "person"
+        },
+        "visibility": {
+          "enum": [
+            "public",
+            "family",
+            "admin",
+            "withheld"
+          ]
+        },
+        "retired": {
+          "type": "boolean"
+        },
+        "tombstone_of": {
+          "type": "string"
+        },
+        "retirement_reason": {
+          "type": "string",
+          "minLength": 1
+        },
+        "editorial_label": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "schema_version",
+        "id",
+        "type",
+        "visibility",
+        "retired"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "retired": {
+                "const": true
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "retirement_reason"
+            ]
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "tombstone_of"
+            ]
+          },
+          "then": {
+            "properties": {
+              "retired": {
+                "const": true
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "id": {
+          "type": "string",
+          "pattern": "^(per|psn|asn|src|cit|plc|ast|nar|con|rq)_[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+        },
+        "type": {
+          "const": "persona"
+        },
+        "visibility": {
+          "enum": [
+            "public",
+            "family",
+            "admin",
+            "withheld"
+          ]
+        },
+        "retired": {
+          "type": "boolean"
+        },
+        "tombstone_of": {
+          "type": "string"
+        },
+        "retirement_reason": {
+          "type": "string",
+          "minLength": 1
+        },
+        "citation_id": {
+          "type": "string"
+        },
+        "raw_name": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "schema_version",
+        "id",
+        "type",
+        "visibility",
+        "retired",
+        "citation_id",
+        "raw_name",
+        "role"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "retired": {
+                "const": true
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "retirement_reason"
+            ]
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "tombstone_of"
+            ]
+          },
+          "then": {
+            "properties": {
+              "retired": {
+                "const": true
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "id": {
+          "type": "string",
+          "pattern": "^(per|psn|asn|src|cit|plc|ast|nar|con|rq)_[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+        },
+        "type": {
+          "const": "source"
+        },
+        "visibility": {
+          "enum": [
+            "public",
+            "family",
+            "admin",
+            "withheld"
+          ]
+        },
+        "retired": {
+          "type": "boolean"
+        },
+        "tombstone_of": {
+          "type": "string"
+        },
+        "retirement_reason": {
+          "type": "string",
+          "minLength": 1
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source_kind": {
+          "enum": [
+            "original_record",
+            "record_image",
+            "published_transcription",
+            "index",
+            "newspaper",
+            "compiled_genealogy",
+            "oral_or_family_testimony",
+            "research_report",
+            "website"
+          ]
+        },
+        "redistribution": {
+          "enum": [
+            "permitted",
+            "restricted",
+            "unknown"
+          ]
+        },
+        "rights_basis": {
+          "enum": [
+            "public_domain",
+            "permission",
+            "license",
+            "fair_use_review",
+            "unknown"
+          ]
+        },
+        "reader_description": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2000
+        },
+        "reader_description_visibility": {
+          "enum": [
+            "public",
+            "family",
+            "admin",
+            "withheld"
+          ]
+        }
+      },
+      "required": [
+        "schema_version",
+        "id",
+        "type",
+        "visibility",
+        "retired",
+        "title",
+        "source_kind",
+        "redistribution",
+        "rights_basis"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "retired": {
+                "const": true
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "retirement_reason"
+            ]
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "tombstone_of"
+            ]
+          },
+          "then": {
+            "properties": {
+              "retired": {
+                "const": true
+              }
+            }
+          }
+        }
+      ],
+      "dependentRequired": {
+        "reader_description_visibility": [
+          "reader_description"
+        ]
+      }
+    },
+    {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "id": {
+          "type": "string",
+          "pattern": "^(per|psn|asn|src|cit|plc|ast|nar|con|rq)_[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+        },
+        "type": {
+          "const": "citation"
+        },
+        "visibility": {
+          "enum": [
+            "public",
+            "family",
+            "admin",
+            "withheld"
+          ]
+        },
+        "retired": {
+          "type": "boolean"
+        },
+        "tombstone_of": {
+          "type": "string"
+        },
+        "retirement_reason": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source_id": {
+          "type": "string"
+        },
+        "locator": {
+          "type": "string",
+          "minLength": 1
+        },
+        "transcription": {
+          "type": "string"
+        },
+        "transcription_visibility": {
+          "enum": [
+            "public",
+            "family",
+            "admin",
+            "withheld"
+          ]
+        },
+        "inspection": {
+          "enum": [
+            "original_image_inspected",
+            "published_image_inspected",
+            "text_or_transcription_inspected",
+            "index_only",
+            "reported_by_family",
+            "uninspected_lead"
+          ]
+        },
+        "locations": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 100,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "label",
+              "kind"
+            ],
+            "properties": {
+              "label": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 120
+              },
+              "kind": {
+                "enum": [
+                  "external_original",
+                  "external_index",
+                  "external_publication",
+                  "hosted_copy"
+                ]
+              },
+              "url": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 4096
+              },
+              "asset_id": {
+                "type": "string",
+                "pattern": "^ast_"
+              },
+              "detail": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 2000
+              },
+              "access_note": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 500
+              }
+            },
+            "if": {
+              "properties": {
+                "kind": {
+                  "const": "hosted_copy"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "asset_id"
+              ],
+              "not": {
+                "required": [
+                  "url"
+                ]
+              }
+            },
+            "else": {
+              "not": {
+                "required": [
+                  "asset_id"
+                ]
+              }
+            }
+          }
+        }
+      },
+      "required": [
+        "schema_version",
+        "id",
+        "type",
+        "visibility",
+        "retired",
+        "source_id",
+        "locator",
+        "transcription",
+        "transcription_visibility",
+        "inspection"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "retired": {
+                "const": true
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "retirement_reason"
+            ]
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "tombstone_of"
+            ]
+          },
+          "then": {
+            "properties": {
+              "retired": {
+                "const": true
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "id": {
+          "type": "string",
+          "pattern": "^(per|psn|asn|src|cit|plc|ast|nar|con|rq)_[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+        },
+        "type": {
+          "const": "place"
+        },
+        "visibility": {
+          "enum": [
+            "public",
+            "family",
+            "admin",
+            "withheld"
+          ]
+        },
+        "retired": {
+          "type": "boolean"
+        },
+        "tombstone_of": {
+          "type": "string"
+        },
+        "retirement_reason": {
+          "type": "string",
+          "minLength": 1
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "schema_version",
+        "id",
+        "type",
+        "visibility",
+        "retired",
+        "label"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "retired": {
+                "const": true
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "retirement_reason"
+            ]
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "tombstone_of"
+            ]
+          },
+          "then": {
+            "properties": {
+              "retired": {
+                "const": true
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "id": {
+          "type": "string",
+          "pattern": "^(per|psn|asn|src|cit|plc|ast|nar|con|rq)_[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+        },
+        "type": {
+          "const": "asset"
+        },
+        "visibility": {
+          "enum": [
+            "public",
+            "family",
+            "admin",
+            "withheld"
+          ]
+        },
+        "retired": {
+          "type": "boolean"
+        },
+        "tombstone_of": {
+          "type": "string"
+        },
+        "retirement_reason": {
+          "type": "string",
+          "minLength": 1
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "byte_size": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "media_type": {
+          "type": "string",
+          "pattern": "^[a-z0-9.+-]+/[a-z0-9.+-]+$"
+        },
+        "storage_key": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source_id": {
+          "type": "string"
+        },
+        "redistribution": {
+          "enum": [
+            "permitted",
+            "restricted",
+            "unknown"
+          ]
+        },
+        "rights_basis": {
+          "enum": [
+            "public_domain",
+            "permission",
+            "license",
+            "fair_use_review",
+            "unknown"
+          ]
+        }
+      },
+      "required": [
+        "schema_version",
+        "id",
+        "type",
+        "visibility",
+        "retired",
+        "label",
+        "sha256",
+        "byte_size",
+        "media_type",
+        "storage_key",
+        "source_id",
+        "redistribution",
+        "rights_basis"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "retired": {
+                "const": true
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "retirement_reason"
+            ]
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "tombstone_of"
+            ]
+          },
+          "then": {
+            "properties": {
+              "retired": {
+                "const": true
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "id": {
+          "type": "string",
+          "pattern": "^(per|psn|asn|src|cit|plc|ast|nar|con|rq)_[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+        },
+        "type": {
+          "const": "narrative"
+        },
+        "visibility": {
+          "enum": [
+            "public",
+            "family",
+            "admin",
+            "withheld"
+          ]
+        },
+        "retired": {
+          "type": "boolean"
+        },
+        "tombstone_of": {
+          "type": "string"
+        },
+        "retirement_reason": {
+          "type": "string",
+          "minLength": 1
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "body": {
+          "type": "string"
+        },
+        "subjects": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "uniqueItems": true
+        },
+        "assertions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "uniqueItems": true
+        },
+        "historical_references": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "schema_version",
+        "id",
+        "type",
+        "visibility",
+        "retired",
+        "title",
+        "body",
+        "subjects",
+        "assertions"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "retired": {
+                "const": true
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "retirement_reason"
+            ]
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "tombstone_of"
+            ]
+          },
+          "then": {
+            "properties": {
+              "retired": {
+                "const": true
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "id": {
+          "type": "string",
+          "pattern": "^(per|psn|asn|src|cit|plc|ast|nar|con|rq)_[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+        },
+        "type": {
+          "const": "consent"
+        },
+        "visibility": {
+          "enum": [
+            "public",
+            "family",
+            "admin",
+            "withheld"
+          ]
+        },
+        "retired": {
+          "type": "boolean"
+        },
+        "tombstone_of": {
+          "type": "string"
+        },
+        "retirement_reason": {
+          "type": "string",
+          "minLength": 1
+        },
+        "person_id": {
+          "type": "string"
+        },
+        "informant_source_id": {
+          "type": "string"
+        },
+        "decision": {
+          "enum": [
+            "grant",
+            "deny",
+            "withdraw",
+            "expired"
+          ]
+        },
+        "scope": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "uniqueItems": true
+        },
+        "audience": {
+          "enum": [
+            "family",
+            "public"
+          ]
+        },
+        "recorded_at": {
+          "type": "string",
+          "format": "date"
+        },
+        "method": {
+          "type": "string",
+          "minLength": 1
+        },
+        "supersedes": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "schema_version",
+        "id",
+        "type",
+        "visibility",
+        "retired",
+        "decision",
+        "scope",
+        "audience",
+        "recorded_at",
+        "method"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "retired": {
+                "const": true
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "retirement_reason"
+            ]
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "tombstone_of"
+            ]
+          },
+          "then": {
+            "properties": {
+              "retired": {
+                "const": true
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "id": {
+          "type": "string",
+          "pattern": "^(per|psn|asn|src|cit|plc|ast|nar|con|rq)_[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+        },
+        "type": {
+          "const": "research_question"
+        },
+        "visibility": {
+          "enum": [
+            "public",
+            "family",
+            "admin",
+            "withheld"
+          ]
+        },
+        "retired": {
+          "type": "boolean"
+        },
+        "tombstone_of": {
+          "type": "string"
+        },
+        "retirement_reason": {
+          "type": "string",
+          "minLength": 1
+        },
+        "question": {
+          "type": "string",
+          "minLength": 1
+        },
+        "state": {
+          "enum": [
+            "open",
+            "resolved",
+            "rejected"
+          ]
+        },
+        "references": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "uniqueItems": true
+        },
+        "resolution_note": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "schema_version",
+        "id",
+        "type",
+        "visibility",
+        "retired",
+        "question",
+        "state",
+        "references"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "retired": {
+                "const": true
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "retirement_reason"
+            ]
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "tombstone_of"
+            ]
+          },
+          "then": {
+            "properties": {
+              "retired": {
+                "const": true
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "id": {
+          "type": "string",
+          "pattern": "^(per|psn|asn|src|cit|plc|ast|nar|con|rq)_[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+        },
+        "type": {
+          "const": "assertion"
+        },
+        "visibility": {
+          "enum": [
+            "public",
+            "family",
+            "admin",
+            "withheld"
+          ]
+        },
+        "retired": {
+          "type": "boolean"
+        },
+        "tombstone_of": {
+          "type": "string"
+        },
+        "retirement_reason": {
+          "type": "string",
+          "minLength": 1
+        },
+        "assertion_type": {
+          "enum": [
+            "person.name",
+            "identity.same_person",
+            "identity.not_same_person",
+            "person.birth",
+            "person.death",
+            "event.adoption",
+            "event.marriage",
+            "event.recorded_property",
+            "person.occupation",
+            "person.education",
+            "person.military_service",
+            "source.interpretation",
+            "person.residence",
+            "relationship.parent_child",
+            "relationship.spouse",
+            "relationship.guardian",
+            "relationship.adoption",
+            "historical.enslavement",
+            "person.sex",
+            "person.living"
+          ]
+        },
+        "subject_id": {
+          "type": "string"
+        },
+        "value": {
+          "type": "object"
+        },
+        "origin": {
+          "enum": [
+            "source_statement",
+            "researcher_conclusion",
+            "researcher_derivation",
+            "family_testimony",
+            "editorial_policy"
+          ]
+        },
+        "status": {
+          "enum": [
+            "candidate",
+            "conflicting",
+            "accepted",
+            "rejected",
+            "corrected"
+          ]
+        },
+        "grade": {
+          "enum": [
+            "A",
+            "B",
+            "C",
+            "D",
+            null
+          ]
+        },
+        "dependencies": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "uniqueItems": true
+        },
+        "evidence": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "citation_id": {
+                "type": "string"
+              },
+              "stance": {
+                "enum": [
+                  "supports",
+                  "contradicts",
+                  "context"
+                ]
+              },
+              "explicitness": {
+                "enum": [
+                  "explicit",
+                  "inferred",
+                  "unknown"
+                ]
+              }
+            },
+            "required": [
+              "citation_id",
+              "stance",
+              "explicitness"
+            ],
+            "additionalProperties": false
+          },
+          "uniqueItems": true
+        },
+        "reasoning": {
+          "type": "string"
+        },
+        "conflict_group": {
+          "type": "string",
+          "pattern": "^cfg_[a-z0-9_-]+$"
+        },
+        "supersedes": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "schema_version",
+        "id",
+        "type",
+        "visibility",
+        "retired",
+        "assertion_type",
+        "subject_id",
+        "value",
+        "origin",
+        "status",
+        "dependencies",
+        "evidence"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "retired": {
+                "const": true
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "retirement_reason"
+            ]
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "tombstone_of"
+            ]
+          },
+          "then": {
+            "properties": {
+              "retired": {
+                "const": true
+              }
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,631 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": [
+    "assertion_type",
+    "value"
+  ],
+  "oneOf": [
+    {
+      "properties": {
+        "assertion_type": {
+          "const": "person.name"
+        },
+        "value": {
+          "type": "object",
+          "properties": {
+            "raw": {
+              "type": "string",
+              "minLength": 1
+            },
+            "normalized": {
+              "type": "string"
+            },
+            "name_kind": {
+              "enum": [
+                "birth",
+                "married",
+                "familiar",
+                "other",
+                "unknown"
+              ]
+            },
+            "preferred_display": {
+              "type": "boolean"
+            },
+            "used_from": {
+              "$ref": "#/$defs/date"
+            },
+            "used_to": {
+              "$ref": "#/$defs/date"
+            },
+            "context": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "raw"
+          ],
+          "additionalProperties": false
+        }
+      }
+    },
+    {
+      "properties": {
+        "assertion_type": {
+          "const": "identity.same_person"
+        },
+        "value": {
+          "type": "object",
+          "properties": {
+            "other_id": {
+              "type": "string"
+            },
+            "identity_state": {
+              "enum": [
+                "possible",
+                "probable",
+                "confirmed",
+                "rejected"
+              ]
+            }
+          },
+          "required": [
+            "other_id",
+            "identity_state"
+          ],
+          "additionalProperties": false
+        }
+      }
+    },
+    {
+      "properties": {
+        "assertion_type": {
+          "const": "identity.not_same_person"
+        },
+        "value": {
+          "type": "object",
+          "properties": {
+            "other_id": {
+              "type": "string"
+            },
+            "identity_state": {
+              "enum": [
+                "possible",
+                "probable",
+                "confirmed",
+                "rejected"
+              ]
+            }
+          },
+          "required": [
+            "other_id",
+            "identity_state"
+          ],
+          "additionalProperties": false
+        }
+      }
+    },
+    {
+      "properties": {
+        "assertion_type": {
+          "const": "person.birth"
+        },
+        "value": {
+          "type": "object",
+          "properties": {
+            "date": {
+              "$ref": "#/$defs/date"
+            },
+            "raw_place": {
+              "type": "string"
+            },
+            "place_id": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "date"
+          ],
+          "additionalProperties": false
+        }
+      }
+    },
+    {
+      "properties": {
+        "assertion_type": {
+          "const": "person.death"
+        },
+        "value": {
+          "type": "object",
+          "properties": {
+            "date": {
+              "$ref": "#/$defs/date"
+            },
+            "raw_place": {
+              "type": "string"
+            },
+            "place_id": {
+              "type": "string"
+            },
+            "life_stage": {
+              "enum": [
+                "infant",
+                "child",
+                "adult",
+                "unknown"
+              ]
+            }
+          },
+          "required": [
+            "date"
+          ],
+          "additionalProperties": false
+        }
+      }
+    },
+    {
+      "properties": {
+        "assertion_type": {
+          "const": "event.adoption"
+        },
+        "value": {
+          "type": "object",
+          "properties": {
+            "date": {
+              "$ref": "#/$defs/date"
+            },
+            "raw_place": {
+              "type": "string"
+            },
+            "place_id": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "date"
+          ],
+          "additionalProperties": false
+        }
+      }
+    },
+    {
+      "properties": {
+        "assertion_type": {
+          "const": "event.marriage"
+        },
+        "value": {
+          "type": "object",
+          "properties": {
+            "date": {
+              "$ref": "#/$defs/date"
+            },
+            "raw_place": {
+              "type": "string"
+            },
+            "place_id": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "date"
+          ],
+          "additionalProperties": false
+        }
+      }
+    },
+    {
+      "properties": {
+        "assertion_type": {
+          "const": "event.recorded_property"
+        },
+        "value": {
+          "type": "object",
+          "properties": {
+            "date": {
+              "$ref": "#/$defs/date"
+            },
+            "raw_place": {
+              "type": "string"
+            },
+            "place_id": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "date"
+          ],
+          "additionalProperties": false
+        }
+      }
+    },
+    {
+      "properties": {
+        "assertion_type": {
+          "const": "person.occupation"
+        },
+        "value": {
+          "type": "object",
+          "properties": {
+            "raw": {
+              "type": "string",
+              "minLength": 1
+            },
+            "normalized": {
+              "type": "string"
+            },
+            "date": {
+              "$ref": "#/$defs/date"
+            }
+          },
+          "required": [
+            "raw"
+          ],
+          "additionalProperties": false
+        }
+      }
+    },
+    {
+      "properties": {
+        "assertion_type": {
+          "const": "person.education"
+        },
+        "value": {
+          "type": "object",
+          "properties": {
+            "raw": {
+              "type": "string",
+              "minLength": 1
+            },
+            "normalized": {
+              "type": "string"
+            },
+            "date": {
+              "$ref": "#/$defs/date"
+            }
+          },
+          "required": [
+            "raw"
+          ],
+          "additionalProperties": false
+        }
+      }
+    },
+    {
+      "properties": {
+        "assertion_type": {
+          "const": "person.military_service"
+        },
+        "value": {
+          "type": "object",
+          "properties": {
+            "raw": {
+              "type": "string",
+              "minLength": 1
+            },
+            "normalized": {
+              "type": "string"
+            },
+            "date": {
+              "$ref": "#/$defs/date"
+            }
+          },
+          "required": [
+            "raw"
+          ],
+          "additionalProperties": false
+        }
+      }
+    },
+    {
+      "properties": {
+        "assertion_type": {
+          "const": "source.interpretation"
+        },
+        "value": {
+          "type": "object",
+          "properties": {
+            "raw": {
+              "type": "string",
+              "minLength": 1
+            },
+            "normalized": {
+              "type": "string"
+            },
+            "date": {
+              "$ref": "#/$defs/date"
+            }
+          },
+          "required": [
+            "raw"
+          ],
+          "additionalProperties": false
+        }
+      }
+    },
+    {
+      "properties": {
+        "assertion_type": {
+          "const": "person.residence"
+        },
+        "value": {
+          "type": "object",
+          "properties": {
+            "raw_place": {
+              "type": "string",
+              "minLength": 1
+            },
+            "place_id": {
+              "type": "string"
+            },
+            "date": {
+              "$ref": "#/$defs/date"
+            }
+          },
+          "required": [
+            "raw_place"
+          ],
+          "additionalProperties": false
+        }
+      }
+    },
+    {
+      "properties": {
+        "assertion_type": {
+          "const": "relationship.parent_child"
+        },
+        "value": {
+          "type": "object",
+          "properties": {
+            "parent_id": {
+              "type": "string"
+            },
+            "child_id": {
+              "type": "string"
+            },
+            "relationship_kind": {
+              "enum": [
+                "biological",
+                "adoptive",
+                "step",
+                "foster",
+                "guardian",
+                "unknown"
+              ]
+            },
+            "adoption_event_id": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "parent_id",
+            "child_id",
+            "relationship_kind"
+          ],
+          "additionalProperties": false
+        }
+      }
+    },
+    {
+      "properties": {
+        "assertion_type": {
+          "const": "relationship.spouse"
+        },
+        "value": {
+          "type": "object",
+          "properties": {
+            "other_id": {
+              "type": "string"
+            },
+            "date": {
+              "$ref": "#/$defs/date"
+            },
+            "raw": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "other_id",
+            "raw"
+          ],
+          "additionalProperties": false
+        }
+      }
+    },
+    {
+      "properties": {
+        "assertion_type": {
+          "const": "relationship.guardian"
+        },
+        "value": {
+          "type": "object",
+          "properties": {
+            "other_id": {
+              "type": "string"
+            },
+            "date": {
+              "$ref": "#/$defs/date"
+            },
+            "raw": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "other_id",
+            "raw"
+          ],
+          "additionalProperties": false
+        }
+      }
+    },
+    {
+      "properties": {
+        "assertion_type": {
+          "const": "relationship.adoption"
+        },
+        "value": {
+          "type": "object",
+          "properties": {
+            "other_id": {
+              "type": "string"
+            },
+            "date": {
+              "$ref": "#/$defs/date"
+            },
+            "raw": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "other_id",
+            "raw"
+          ],
+          "additionalProperties": false
+        }
+      }
+    },
+    {
+      "properties": {
+        "assertion_type": {
+          "const": "historical.enslavement"
+        },
+        "value": {
+          "type": "object",
+          "properties": {
+            "other_id": {
+              "type": "string"
+            },
+            "date": {
+              "$ref": "#/$defs/date"
+            },
+            "raw": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "raw"
+          ],
+          "additionalProperties": false
+        }
+      }
+    },
+    {
+      "properties": {
+        "assertion_type": {
+          "const": "person.sex"
+        },
+        "value": {
+          "type": "object",
+          "properties": {
+            "sex": {
+              "enum": [
+                "male",
+                "female",
+                "unknown"
+              ]
+            }
+          },
+          "required": [
+            "sex"
+          ],
+          "additionalProperties": false
+        }
+      }
+    },
+    {
+      "properties": {
+        "assertion_type": {
+          "const": "person.living"
+        },
+        "value": {
+          "type": "object",
+          "properties": {
+            "as_of": {
+              "type": "string",
+              "format": "date"
+            },
+            "valid_through": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          "required": [
+            "as_of",
+            "valid_through"
+          ],
+          "additionalProperties": false
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "date": {
+      "type": "object",
+      "properties": {
+        "raw": {
+          "type": "string",
+          "minLength": 1
+        },
+        "normalized": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date"
+        },
+        "calendar": {
+          "enum": [
+            "gregorian",
+            "julian",
+            "quaker_numeric",
+            "unknown"
+          ]
+        },
+        "precision": {
+          "enum": [
+            "exact",
+            "about",
+            "before",
+            "after",
+            "between",
+            "unknown"
+          ]
+        },
+        "interpretation_note": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "raw"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "cardinality": {
+    "person.name": "multiple",
+    "identity.same_person": "multiple",
+    "identity.not_same_person": "multiple",
+    "person.birth": "singleton",
+    "person.death": "singleton",
+    "event.adoption": "multiple",
+    "event.marriage": "multiple",
+    "event.recorded_property": "multiple",
+    "person.occupation": "multiple",
+    "person.education": "multiple",
+    "person.military_service": "multiple",
+    "source.interpretation": "multiple",
+    "person.residence": "multiple",
+    "relationship.parent_child": "two_biological_parents",
+    "relationship.spouse": "multiple",
+    "relationship.guardian": "multiple",
+    "relationship.adoption": "multiple",
+    "historical.enslavement": "multiple",
+    "person.sex": "singleton",
+    "person.living": "singleton"
+  }
+}

@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% from "person_indicators.html" import legend %}
+{% block content %}
+<section class="hero"><p class="eyebrow">The {{ site_name }}</p><h1>About this archive</h1>
+<p class="lede">A family history built from records. Conclusions can change as evidence grows.</p>
+<p>Explore <a href="/people">people in the archive</a> and follow their citations to the <a href="/sources">sources and records</a> behind the stories.</p>
+<p>Profiles distinguish current conclusions, unresolved questions and corrected claims. Names can recur across generations; compare dates and evidence before choosing a person.</p>
+<p><a href="/access">Family access</a> offers sign-in and access requests. Family relationships are verified separately.</p></section>
+{{ legend() }}
+{% endblock %}

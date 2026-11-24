@@ -1,0 +1,29 @@
+{# One artwork source for browse/profile presentation and future graph details. #}
+{% macro icon(name) -%}
+<span class="person-icon" aria-hidden="true">{% include 'icons/' ~ name ~ '.svg' %}</span>
+{%- endmacro %}
+{% macro explanation(item, person_id, key) -%}
+<details class="indicator-explanation"><summary role="button" aria-label="{{ item.label }}" {% if item.detail %}aria-describedby="indicator-{{ person_id }}-{{ key }}"{% endif %}>{{ icon(item.icon) }}</summary><div class="indicator-tooltip"><strong>{{ item.label }}</strong>{% if item.detail %}<p id="indicator-{{ person_id }}-{{ key }}">{{ item.detail }}</p>{% endif %}{% if item.assertion_ids %}<a href="/assertions/{{ item.assertion_ids[0] }}">Supporting evidence</a>{% endif %}</div></details>
+{%- endmacro %}
+{% macro indicators(p) %}
+<div class="person-indicators">
+{% if p.membership and p.membership.icon %}<div class="person-membership membership-{{ p.membership.scope }}">{{ explanation(p.membership, p.id, 'membership') }}</div>{% endif %}
+{% if p.attributes %}<ul class="person-attributes" aria-label="Personal attributes">{% for attribute in p.attributes %}<li>{{ explanation(attribute, p.id, attribute.icon) }}</li>{% endfor %}</ul>{% endif %}
+</div>
+{% endmacro %}
+{% macro legend() %}
+<section id="person-indicators" aria-labelledby="indicators-heading"><h2 id="indicators-heading">Reading person cards</h2>
+<p>Tap or press Enter on an icon for its explanation and evidence. Hover or keyboard focus also shows its meaning. Membership appears first. Personal attributes are separate and appear only when supported by the records available to you.</p>
+<ul class="indicator-legend">
+<li>{{ icon('family-tree') }}<span><strong>In the family tree:</strong> an established family connection, including spouses and adopted children.</span></li>
+<li>{{ icon('family-possible') }}<span><strong>Possible family connection:</strong> a connection that remains unresolved.</span></li>
+<li><span><strong>Other person in records:</strong> no established family connection. This does not mean the person is proved unrelated.</span></li>
+<li>{{ icon('deceased') }}<span><strong>Deceased:</strong> a current accepted death claim or conflicting accounts of when the death occurred.</span></li>
+<li>{{ icon('presumed-deceased') }}<span><strong>Presumed deceased:</strong> accepted historical birth evidence places the person more than 110 years before the pinned reference year; no direct death record.</span></li>
+<li>{{ icon('child') }}<span><strong>Child:</strong> documented childhood. On a deceased person's card, the label refers to childhood at death.</span></li>
+<li>{{ icon('slave') }}<span><strong>Slave:</strong> a supported enslavement record, independent of family membership.</span></li>
+<li>{{ icon('male') }}{{ icon('female') }}<span><strong>Male / Female:</strong> documented when explicitly sourced, or labeled as inferred from high-confidence historical first-name usage. Statistical name usage is not proof of sex or gender identity.</span></li>
+<li>{{ icon('living') }}<span><strong>Living:</strong> dated evidence of being living with a revalidation deadline. Neither missing death records nor publication permission establish living status.</span></li>
+</ul><p>Missing icons mean an attribute is not established here. No adult icon is used. Unknown ages and life status remain unknown.</p>
+</section>
+{% endmacro %}

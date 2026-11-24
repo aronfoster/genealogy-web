@@ -1,0 +1,21 @@
+Browser authentication code
+The reader and owner bundles include Firebase JavaScript SDK code from Google LLC
+under Apache License 2.0. The original copyright headers are inline in each
+bundle. The complete license is in Firebase-LICENSE.txt. The bundled idb
+library is by Jake Archibald; see idb-LICENSE.txt for its ISC notice.
+
+Fonts
+Inter is copyright 2016 The Inter Project Authors. Source Serif 4 is copyright
+2014–2021 Adobe Systems Incorporated, with Reserved Font Name “Source”.
+The three WOFF2 resources retain their embedded name records. The SIL Open Font
+License 1.1 texts accompany the fonts in web/static.
+
+Statistical inputs
+The U.S. Social Security Administration national baby names dataset is listed
+under CC0 1.0 in the federal data catalog:
+https://catalog.data.gov/dataset/baby-names-from-social-security-card-applications-national-data
+The packaged table contains derived decade counts, suppression adjustments,
+source identity and method qualifications. For coverage limits see
+https://www.ssa.gov/oact/babynames/background.html
+The historical attestation metadata credits Douglas Galbi and George Bell.
+Their earlier-period counts and underlying transcriptions are excluded.

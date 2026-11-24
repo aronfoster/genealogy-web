@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Family access administration</title>
+    <link rel="stylesheet" href="/owner.css" />
+    <script type="module" src="/owner.js"></script>
+  </head>
+  <body>
+    <main>
+      <header>
+        <p>{{ site_name }}</p>
+        <h1>Family access</h1>
+        <p>Owner administration</p>
+      </header>
+      <p id="message" role="status" aria-live="polite"></p>
+      <section id="signin">
+        <h2>Owner sign-in</h2>
+        <p>Use your owner email. This sign-in lasts up to one hour.</p>
+        <form id="login">
+          <label
+            >Email
+            <input
+              id="email"
+              type="email"
+              autocomplete="email"
+              required /></label
+          ><button>Send sign-in link</button>
+          <button id="new-link" type="button" hidden>
+            Use a new sign-in link
+          </button>
+        </form>
+      </section>
+      <section id="admin" hidden>
+        <nav>
+          <button id="refresh">Refresh</button
+          ><button id="logout">Sign out</button>
+        </nav>
+        <div class="columns">
+          <section>
+            <h2>Members &amp; requests</h2>
+            <label
+              ><input id="all" type="checkbox" /> Include all members</label
+            >
+            <ul id="members"></ul>
+            <button id="previous">Previous</button>
+            <button id="next">Next</button>
+          </section>
+          <section id="detail" hidden>
+            <h2 id="member-title">Member</h2>
+            <p id="state"></p>
+            <div id="identities"></div>
+            <h3>Requests</h3>
+            <div id="requests"></div>
+            <form id="decision">
+              <h3>Decision</h3>
+              <label
+                >Action
+                <select id="action"></select
+              ></label>
+              <div id="person-selection" hidden>
+                <label
+                  >Find person
+                  <input id="person-query" maxlength="100" /></label
+                ><button type="button" id="search">Search</button
+                ><label
+                  >Person
+                  <select id="person">
+                    <option value="">Remove person link</option>
+                  </select></label
+                >
+                <p>Each email identity keeps its own membership decision.</p>
+              </div>
+              <label>Note <input id="note" maxlength="500" /></label
+              ><label class="ack"
+                ><input id="verified" type="checkbox" required /> I verified
+                this identity and the intended change outside this
+                website.</label
+              ><button id="apply">Apply decision</button>
+            </form>
+            <h3>Decision history</h3>
+            <ol id="history"></ol>
+            <button id="older">Older requests and decisions</button>
+          </section>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>

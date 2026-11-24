@@ -1,0 +1,138 @@
+:root {
+  font:
+    17px/1.5 system-ui,
+    sans-serif;
+  color: #23352c;
+  background: #f5f3ec;
+}
+body {
+  margin: 0;
+}
+main {
+  max-width: 1160px;
+  margin: auto;
+  padding: 2rem;
+}
+header {
+  border-bottom: 2px solid #43624e;
+  padding-bottom: 1rem;
+}
+header p:first-child {
+  font-size: 0.75rem;
+  letter-spacing: 0.14em;
+}
+h1 {
+  font:
+    2.6rem Georgia,
+    serif;
+  margin: 0.3rem 0;
+}
+h2 {
+  font:
+    1.5rem Georgia,
+    serif;
+}
+button,
+input,
+select {
+  font: inherit;
+}
+button {
+  background: #284d3b;
+  color: white;
+  border: 0;
+  border-radius: 4px;
+  padding: 0.6rem 0.9rem;
+  cursor: pointer;
+}
+button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+input:not([type="checkbox"]),
+select {
+  box-sizing: border-box;
+  display: block;
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid #8a998e;
+  border-radius: 4px;
+}
+label {
+  display: block;
+  margin: 0.8rem 0;
+}
+nav {
+  display: flex;
+  gap: 1rem;
+  margin: 1rem 0;
+}
+.columns {
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: 2rem;
+}
+section {
+  min-width: 0;
+}
+#detail {
+  background: white;
+  padding: 1.2rem;
+  border-radius: 8px;
+}
+#members {
+  padding: 0;
+  list-style: none;
+}
+#members button {
+  width: 100%;
+  text-align: left;
+  margin: 0.3rem 0;
+  background: #e1e9df;
+  color: #23352c;
+  overflow-wrap: anywhere;
+}
+#message {
+  padding: 0.6rem 0;
+  font-weight: 600;
+}
+.record {
+  border-bottom: 1px solid #cbd1c7;
+  padding: 0.7rem 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.ack {
+  display: flex;
+  gap: 0.5rem;
+  align-items: start;
+}
+.ack input {
+  margin-top: 0.5rem;
+}
+#signin {
+  max-width: 28rem;
+}
+#history {
+  padding-left: 1.5rem;
+}
+#identities {
+  overflow-wrap: anywhere;
+}
+button:focus-visible,
+input:focus-visible,
+select:focus-visible {
+  outline: 3px solid #b88423;
+  outline-offset: 3px;
+}
+[hidden] {
+  display: none !important;
+}
+@media (max-width: 720px) {
+  main {
+    padding: 1rem;
+  }
+  .columns {
+    grid-template-columns: 1fr;
+  }
+}
