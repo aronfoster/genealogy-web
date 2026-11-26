@@ -44,7 +44,18 @@ jobs:
           uv build --wheel --out-dir "$RUNNER_TEMP/current-dist"
           uv pip install --no-deps --reinstall --python .venv/bin/python "$RUNNER_TEMP"/current-dist/*.whl
       - name: Synthetic database, HTTP and released-reader compatibility
-        run: BASELINE_READER_PATH="$RUNNER_TEMP/old-reader" .venv/bin/python -m pytest
+        run: |
+          if ! command -v nginx >/dev/null; then
+            sudo apt-get update -qq
+            sudo apt-get install -y nginx-light
+          fi
+          PORTRAIT_PROXY_TEST=1 BASELINE_READER_PATH="$RUNNER_TEMP/old-reader" .venv/bin/python -m pytest
+      - name: Installed owner authorization under service isolation
+        run: |
+          sudo systemd-run --quiet --wait --pipe --collect --uid="$(id -un)" \
+            -p NoNewPrivileges=yes -p ProtectSystem=strict -p PrivateTmp=yes \
+            -p "WorkingDirectory=$GITHUB_WORKSPACE" \
+            "$GITHUB_WORKSPACE/.venv/bin/python" -m pytest -p no:cacheprovider tests/test_owner_access.py
       - name: Rebuild authentication and owner clients
         run: |
           npm ci

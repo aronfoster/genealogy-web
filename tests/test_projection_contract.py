@@ -14,6 +14,7 @@ import pytest
 from browser_scenarios.records import identifier
 from check_synthetic_browser import materialize
 from check_web import serialized_migration
+from portrait_proxy import proxy_client
 from psycopg import sql
 from psycopg.conninfo import make_conninfo
 from starlette.testclient import TestClient
@@ -279,19 +280,23 @@ def database():
                 cluster.execute(sql.SQL("DROP ROLE IF EXISTS {}").format(sql.Identifier(role)))
 
 
-def test_http_and_sql_across_generations(tmp_path, database):
+def test_http_and_sql_across_generations(tmp_path, database, request):
     inputs, person, asset = samples(tmp_path)
     admin, dsns = database
     store = PostgresStore(*dsns)
     session = {"approved": True}
-    client = TestClient(
-        create_app(
-            store=store,
-            authorize_family=lambda _: session["approved"],
-            portrait_root=tmp_path / "assets",
-            asset_url=lambda *_: "https://example.invalid/forbidden",
-        )
+    app = create_app(
+        store=store,
+        authorize_family=lambda _: session["approved"],
+        portrait_root=tmp_path / "assets",
+        asset_url=lambda *_: "https://example.invalid/forbidden",
     )
+    if os.getenv("PORTRAIT_PROXY_TEST"):
+        proxy = proxy_client(app, tmp_path)
+        client = proxy.__enter__()
+        request.addfinalizer(lambda: proxy.__exit__(None, None, None))
+    else:
+        client = TestClient(app)
 
     def stage(profile):
         docs = outputs(tmp_path, inputs, profile)
@@ -370,7 +375,7 @@ def test_http_and_sql_across_generations(tmp_path, database):
                 *command,
                 "import",
                 str(legacy_root / "corpus"),
-                admin.info.dsn,
+                make_conninfo(os.environ["TEST_DATABASE_URL"], dbname=admin.info.dbname),
                 "--commit",
                 "0" * 40,
                 "--inputs",
@@ -429,9 +434,13 @@ def test_http_and_sql_across_generations(tmp_path, database):
             ):
                 response = client.request(method, path, headers=headers)
                 missing = client.request(method, "/portraits/family/missing", headers=headers)
-                assert (response.status_code, response.headers, response.content) == (
+                assert (
+                    response.status_code,
+                    {k: v for k, v in response.headers.items() if k != "date"},
+                    response.content,
+                ) == (
                     404,
-                    missing.headers,
+                    {k: v for k, v in missing.headers.items() if k != "date"},
                     missing.content,
                 )
                 assert (
