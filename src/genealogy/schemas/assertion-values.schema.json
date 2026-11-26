@@ -561,6 +561,48 @@
           "additionalProperties": false
         }
       }
+    },
+    {
+      "properties": {
+        "assertion_type": {
+          "const": "person.favorite_color"
+        },
+        "value": {
+          "type": "object",
+          "properties": {
+            "text": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64,
+              "pattern": "^[^\\x00-\\x1f\\x7f]*\\S[^\\x00-\\x1f\\x7f]*$"
+            }
+          },
+          "required": [
+            "text"
+          ],
+          "additionalProperties": false
+        }
+      }
+    },
+    {
+      "properties": {
+        "assertion_type": {
+          "const": "person.photo"
+        },
+        "value": {
+          "type": "object",
+          "properties": {
+            "asset_id": {
+              "type": "string",
+              "pattern": "^ast_[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+            }
+          },
+          "required": [
+            "asset_id"
+          ],
+          "additionalProperties": false
+        }
+      }
     }
   ],
   "$defs": {
@@ -626,6 +668,8 @@
     "relationship.adoption": "multiple",
     "historical.enslavement": "multiple",
     "person.sex": "singleton",
-    "person.living": "singleton"
+    "person.living": "singleton",
+    "person.favorite_color": "singleton",
+    "person.photo": "singleton"
   }
 }

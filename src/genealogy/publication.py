@@ -10,28 +10,44 @@ from .model import VISIBILITY_RANK, canonical_bytes
 from .name_policy import NamePolicy, fold
 from .names import select_name
 from .policy import content_refs, effective_visibility, superseded_ids
+from .profile_fields import select_fields
+from .projection_contract import BASELINE, ENHANCED, PROFILES
 from .publication_inputs import PublicationInputs
 
 
 def compile_publication(
-    records: list[dict[str, Any]], audience: str, *, inputs: PublicationInputs
+    records: list[dict[str, Any]],
+    audience: str,
+    *,
+    inputs: PublicationInputs,
+    profile: str = BASELINE,
+    verified_portraits: frozenset[tuple[str, str]] = frozenset(),
 ) -> dict[str, Any]:
     """Compile a closed audience graph using only explicit validated inputs."""
     records = sorted(records, key=lambda r: r["id"])
     return _compile_publication(
-        records, audience, effective_visibility(records, inputs.build_year), inputs
+        records,
+        audience,
+        effective_visibility(records, inputs.build_year),
+        inputs,
+        profile,
+        verified_portraits,
     )
 
 
 def compile_publications(
-    records: list[dict[str, Any]], *, inputs: PublicationInputs
+    records: list[dict[str, Any]],
+    *,
+    inputs: PublicationInputs,
+    profile: str = BASELINE,
+    verified_portraits: frozenset[tuple[str, str]] = frozenset(),
 ) -> tuple[dict[str, Any], dict[str, Any], dict[str, str]]:
     """Compile both audiences and decisions from the same immutable input snapshot."""
     records = sorted(records, key=lambda r: r["id"])
     effective = effective_visibility(records, inputs.build_year)
     return (
-        _compile_publication(records, "public", effective, inputs),
-        _compile_publication(records, "family", effective, inputs),
+        _compile_publication(records, "public", effective, inputs, profile, verified_portraits),
+        _compile_publication(records, "family", effective, inputs, profile, verified_portraits),
         effective,
     )
 
@@ -41,6 +57,8 @@ def _compile_publication(
     audience: str,
     effective: dict[str, str],
     inputs: PublicationInputs,
+    profile: str,
+    verified_portraits: frozenset[tuple[str, str]],
 ) -> dict[str, Any]:
     name_policy = inputs.name_policy
     if audience not in {"public", "family"}:
@@ -53,6 +71,10 @@ def _compile_publication(
         and not r["retired"]
         and r["type"] not in {"consent", "research_question"}
     }
+    if profile not in PROFILES:
+        raise ValueError("unsupported projection profile")
+    superseded = superseded_ids(records)
+    fields = select_fields(records, visible, audience, profile, superseded, verified_portraits)
     # Fixed point: dropping an endpoint can invalidate another endpoint or narrative.
     while True:
         remove = {
@@ -62,7 +84,6 @@ def _compile_publication(
             break
         for rid in remove:
             del visible[rid]
-    superseded = superseded_ids(records)
     reverse_supersession: dict[str, list[str]] = {}
     conflict_members: dict[str, list[str]] = {}
     for r in visible.values():
@@ -118,6 +139,7 @@ def _compile_publication(
             if r["id"] in conflict_groups:
                 item["conflict_group"] = conflict_groups[r["id"]]
         elif kind == "person":
+            item.update(fields.get(r["id"], {}))
             destination = "people"
         elif kind == "persona":
             item.update({k: r[k] for k in ("raw_name", "role", "citation_id")})
@@ -134,6 +156,8 @@ def _compile_publication(
             # No archive paths or hashes for unavailable bytes.
             if item["bytes_available"]:
                 item["sha256"] = r["sha256"]
+            if "portrait" in r:
+                item["portrait_attribution"] = r["portrait"]["attribution"]
             destination = "assets"
         elif kind == "source":
             item.update({k: r[k] for k in ("title", "source_kind")})
@@ -188,6 +212,9 @@ def _compile_publication(
             forbidden_names.update(
                 x for k, x in r["value"].items() if k in {"raw", "normalized"} and x
             )
+    if profile == ENHANCED:
+        output["projection_profile"] = profile
+        output["required_capabilities"] = list(PROFILES[profile])
     assert_no_text_leaks(output, forbidden_ids)
     (name_policy or NamePolicy()).scan(output, forbidden_names)
     return output

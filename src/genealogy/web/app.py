@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import hashlib
 import logging
 import os
 import traceback
 from collections.abc import Callable
 from importlib.resources import files
+from pathlib import Path
 from typing import Any
 from urllib.parse import urlencode, urlsplit
 
@@ -27,6 +29,7 @@ from genealogy.feedback.delivery import FeedbackDelivery
 from genealogy.feedback.http import routes as feedback_routes
 from genealogy.feedback.ledger import Ledger
 from genealogy.feedback.youtrack import YouTrackClient
+from genealogy.portrait import MAX_BYTES, safe_png
 
 from .errors import NotFound
 from .presentation import Presenter
@@ -58,6 +61,7 @@ def create_app(
     store: Any = None,
     authorize_family: FamilyAuthorizer | None = None,
     asset_url: AssetURL | None = None,
+    portrait_root: Path | None = None,
     family_auth: FamilyAuth | None = None,
     feedback: Any = None,
 ) -> Starlette:
@@ -67,6 +71,8 @@ def create_app(
     EVERY request. Readers without authorization see only public records. asset_url
     must return a short-lived HTTPS URL for the supplied authorized asset only.
     """
+    if portrait_root is None and os.environ.get("GENEALOGY_PORTRAIT_ROOT"):
+        portrait_root = Path(os.environ["GENEALOGY_PORTRAIT_ROOT"])
     if store is None:
         auth_config = AuthConfig.from_env()
         feedback_config = FeedbackConfig.from_env()
@@ -193,7 +199,7 @@ def create_app(
         try:
             audience: Audience = (
                 ("family" if authorize_family and authorize_family(request) else "public")
-                if api or route == "asset"
+                if api or route in {"asset", "portrait"}
                 else document_audience(request)
             )
             with store.open(audience) as repository:
@@ -211,9 +217,24 @@ def create_app(
                     title = "Our family, in the records" if route == "home" else "Find a person"
                 elif route in {"person", "persona"}:
                     category = "people" if route == "person" else "personas"
-                    if not repository.get(rid, [category]):
+                    row = repository.get(rid, [category])
+                    if not row:
                         raise NotFound
                     data = presenter.profile(rid)
+                    if "favorite_color" in row:
+                        data["favorite_color"] = row["favorite_color"]
+                    if "profile_photo" in row and portrait_root:
+                        aid = row["profile_photo"]["asset_id"]
+                        derivative = repository.get(aid, ["assets"])
+                        if (
+                            derivative
+                            and derivative.get("portrait_attribution")
+                            and derivative.get("bytes_available")
+                        ):
+                            data["profile_photo"] = {
+                                "url": f"/portraits/{audience}/{aid}",
+                                "attribution": derivative["portrait_attribution"],
+                            }
                     title = data["name"]
                 elif route == "family":
                     data = presenter.family(rid)
@@ -254,9 +275,27 @@ def create_app(
                     for asset in data["assets"]:
                         asset["can_open"] = bool(asset_url and asset["bytes_available"])
                     title = data["title"]
+                elif route == "portrait":
+                    # Scope is a restriction on the URL. Session and the current
+                    # serving view independently decide authority for every fetch.
+                    if audience != request.path_params["audience"] or portrait_root is None:
+                        raise NotFound
+                    asset = repository.get(rid, ["assets"])
+                    if (
+                        not asset
+                        or not asset.get("portrait_attribution")
+                        or not asset.get("bytes_available")
+                    ):
+                        raise NotFound
+                    return portrait_response(request, asset, portrait_root)
                 elif route == "asset":
                     asset = repository.get(rid, ["assets"])
-                    if not asset or not asset["bytes_available"] or not asset_url:
+                    if (
+                        not asset
+                        or asset.get("portrait_attribution")
+                        or not asset["bytes_available"]
+                        or not asset_url
+                    ):
                         raise NotFound
                     url = asset_url(asset, audience)
                     if not url:
@@ -434,6 +473,8 @@ def create_app(
             ("sources", "source"),
         ):
             routes.append(Route(prefix + "/" + path + "/{record_id}", _view(page, view)))
+    routes.append(Route("/portraits/{audience}/{record_id}", _view(page, "portrait")))
+    routes.append(Route("/portraits/{audience}/{record_id}/thumbnail", _view(page, "portrait")))
     routes.append(Route("/assets/{record_id}", _view(page, "asset")))
     app = Starlette(
         routes=routes,
@@ -485,6 +526,46 @@ def create_app(
 
     app.add_middleware(BaseHTTPMiddleware, dispatch=response_policy)
     return app
+
+
+def portrait_response(request: Request, asset: Record, root: Path) -> Response:
+    # The holder of a URL never receives a reusable storage credential. Files
+    # are already stripped derivatives, named by their verified content digest.
+    import re
+
+    checksum = asset.get("sha256", "")
+    if not re.fullmatch("[0-9a-f]{64}", checksum):
+        raise NotFound
+    path = root / checksum
+    if not path.is_file() or path.is_symlink() or path.stat().st_size > MAX_BYTES:
+        raise NotFound
+    with path.open("rb") as handle:
+        data = handle.read(MAX_BYTES + 1)
+    if hashlib.sha256(data).hexdigest() != checksum or not safe_png(data):
+        raise NotFound
+    headers = {"Accept-Ranges": "bytes"}
+    requested = request.headers.get("range")
+    status = 200
+    if requested:
+        match = re.fullmatch(r"bytes=(\d{0,12})-(\d{0,12})", requested)
+        size = len(data)
+        if not match or not any(match.groups()):
+            return Response(status_code=416, headers={"Content-Range": f"bytes */{size}"})
+        first, last = match.groups()
+        start = int(first) if first else max(0, size - int(last))
+        end = min(int(last), size - 1) if first and last else size - 1
+        if start > end:
+            return Response(status_code=416, headers={"Content-Range": f"bytes */{size}"})
+        data = data[start : end + 1]
+        headers["Content-Range"] = f"bytes {start}-{end}/{size}"
+        status = 206
+    headers["Content-Length"] = str(len(data))
+    return Response(
+        b"" if request.method == "HEAD" else data,
+        media_type="image/png",
+        status_code=status,
+        headers=headers,
+    )
 
 
 def _view(endpoint: Callable[[Request], Response], view: str) -> Callable[[Request], Response]:

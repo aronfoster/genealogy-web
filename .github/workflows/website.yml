@@ -1,0 +1,54 @@
+name: Website
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, edited]
+  push:
+    branches: [main]
+permissions:
+  contents: read
+concurrency:
+  group: website-${{ (github.event.action != 'edited' || github.event.changes.base != null) && github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' && (github.event.action != 'edited' || github.event.changes.base != null) }}
+jobs:
+  website:
+    if: ${{ github.event.action != 'edited' || github.event.changes.base != null }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ["5432:5432"]
+        options: --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 12
+    env:
+      TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884
+        with:
+          enable-cache: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: 22
+          package-manager-cache: false
+      - name: Build and install the released and proposed wheels
+        run: |
+          uv sync --locked --all-extras
+          git worktree add --detach "$RUNNER_TEMP/baseline" bff431ac4bba664f2e2b7250c995150fbca4d153
+          uv build --wheel "$RUNNER_TEMP/baseline" --out-dir "$RUNNER_TEMP/old-dist"
+          uv pip install --no-deps --target "$RUNNER_TEMP/old-reader" "$RUNNER_TEMP"/old-dist/*.whl
+          uv build --wheel --out-dir "$RUNNER_TEMP/current-dist"
+          uv pip install --no-deps --reinstall --python .venv/bin/python "$RUNNER_TEMP"/current-dist/*.whl
+      - name: Synthetic database, HTTP and released-reader compatibility
+        run: BASELINE_READER_PATH="$RUNNER_TEMP/old-reader" .venv/bin/python -m pytest
+      - name: Rebuild authentication and owner clients
+        run: |
+          npm ci
+          npm run build
+          git diff --exit-code -- src/genealogy/web/static/access.js src/genealogy/owner/owner.js
+      - name: All nine synthetic browser variants
+        run: .venv/bin/python scripts/check_browser_suite.py --workers 2

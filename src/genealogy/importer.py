@@ -9,6 +9,7 @@ from typing import Any
 
 from .model import canonical_bytes, read_records
 from .name_policy import NamePolicy
+from .projection_contract import BASELINE, COLLECTIONS, FEATURES, descriptor, verify_descriptor
 from .publication import compile_publications
 from .publication_inputs import PublicationInputs
 from .validation import CorpusValidator
@@ -90,6 +91,10 @@ def import_corpus(
     build_year: int,
     name_policy: NamePolicy | None = None,
     publication_inputs: PublicationInputs,
+    profile: str = BASELINE,
+    descriptor_bytes: bytes | None = None,
+    descriptor_sha256: str = "",
+    target_runtime: str = "",
 ) -> dict[str, int]:
     if publication_inputs.build_year != build_year or publication_inputs.name_policy != (
         name_policy or NamePolicy()
@@ -101,8 +106,34 @@ def import_corpus(
         verify_production_checkout(
             (repo or corpus.parent).resolve(), commit, accepted_branch, corpus.resolve()
         )
-    records = CorpusValidator().validate(corpus, asset_root, require_bytes=True)
-    public, family, effective = compile_publications(records, inputs=publication_inputs)
+    validator = CorpusValidator()
+    records = validator.validate(corpus, asset_root, require_bytes=True)
+    public, family, effective = compile_publications(
+        records,
+        inputs=publication_inputs,
+        profile=profile,
+        verified_portraits=frozenset(validator.verified_portraits),
+    )
+    if (
+        descriptor_bytes is not None
+        or descriptor_sha256
+        or target_runtime
+        or profile != BASELINE
+        or any(
+            r.get("assertion_type") in FEATURES or "portrait" in r or r.get("profile_only")
+            for r in records
+        )
+    ):
+        if descriptor_bytes is None:
+            raise ValueError("split import requires an accepted projection descriptor")
+        expected = descriptor(
+            public,
+            family,
+            profile,
+            target_runtime,
+            publication_inputs.metadata()["publication_inputs_digest"],
+        )
+        verify_descriptor(descriptor_bytes, descriptor_sha256, expected)
     generation = hashlib.sha256(
         canonical_bytes(
             {
@@ -131,10 +162,8 @@ def import_corpus(
     serving = []
     serving_subjects = []
     for doc in (public, family):
-        for category, items in doc.items():
-            if not isinstance(items, list):
-                continue
-            for item in items:
+        for category in COLLECTIONS:
+            for item in doc[category]:
                 serving.append(
                     (
                         generation,

@@ -16,6 +16,8 @@ from . import SCHEMA_VERSION
 from .evidence_urls import safe_evidence_url
 from .model import PREFIXES, VISIBILITY_RANK, RecordReadError, canonical_bytes, read_records
 from .policy import NARRATIVE_REF, content_refs, superseded_ids
+from .portrait import MAX_BYTES, safe_png
+from .projection_contract import FEATURES
 
 
 @dataclass(frozen=True)
@@ -47,6 +49,7 @@ class CorpusValidator:
         self.value_schema = json.loads(
             directory.joinpath("assertion-values.schema.json").read_text()
         )
+        self.verified_portraits: set[tuple[str, str]] = set()
         self.unverified_assets: list[str] = []
         self.warnings: list[Violation] = []
         Draft202012Validator.check_schema(self.entity_schema)
@@ -55,6 +58,7 @@ class CorpusValidator:
     def validate(
         self, root: Path, asset_root: Path | None = None, *, require_bytes: bool = False
     ) -> list[dict[str, Any]]:
+        self.verified_portraits.clear()
         self.unverified_assets = []
         self.warnings = []
         try:
@@ -158,6 +162,10 @@ class CorpusValidator:
                 fail("ref.dangling", r, target)
 
         records = list(indexed.values())
+        portrait_hashes = {r["sha256"] for r in records if "portrait" in r}
+        portrait_keys = {r["storage_key"] for r in records if "portrait" in r}
+        asset_hashes: set[str] = set()
+        asset_keys: set[str] = set()
         for r in records:
             kind = r["type"]
             if kind == "source" and "reader_description" in r:
@@ -203,6 +211,17 @@ class CorpusValidator:
             if kind == "asset":
                 if r["visibility"] == "public" and r["redistribution"] != "permitted":
                     fail("rights.public_asset", r)
+                if (r["sha256"] in portrait_hashes and r["sha256"] in asset_hashes) or (
+                    r["storage_key"] in portrait_keys and r["storage_key"] in asset_keys
+                ):
+                    fail("portrait.ambiguous_bytes", r)
+                asset_hashes.add(r["sha256"])
+                asset_keys.add(r["storage_key"])
+                if "portrait" in r:
+                    for person in r["portrait"]["depicted_people"]:
+                        ref(r, person, ("per_",))
+                    if r["media_type"] != "image/png" or r["byte_size"] > MAX_BYTES:
+                        fail("portrait.invalid_derivative", r)
                 key = Path(r["storage_key"])
                 if key.is_absolute() or ".." in key.parts:
                     fail("asset.unsafe_path", r)
@@ -211,11 +230,17 @@ class CorpusValidator:
                     if not blob.resolve().is_relative_to(asset_root.resolve()):
                         fail("asset.unsafe_path", r)
                     elif blob.is_file():
+                        data = blob.read_bytes()
                         if (
-                            blob.stat().st_size != r["byte_size"]
-                            or hashlib.sha256(blob.read_bytes()).hexdigest() != r["sha256"]
+                            len(data) != r["byte_size"]
+                            or hashlib.sha256(data).hexdigest() != r["sha256"]
                         ):
                             fail("asset.hash_mismatch", r)
+                        elif "portrait" in r:
+                            if safe_png(data):
+                                self.verified_portraits.add((r["id"], r["sha256"]))
+                            else:
+                                fail("portrait.invalid_derivative", r)
                     else:
                         fail("asset.hash_mismatch", r, detail="missing bytes")
                 elif require_bytes:
@@ -303,6 +328,14 @@ class CorpusValidator:
                     for e in r["evidence"]
                     if e["stance"] == "supports" and e["citation_id"] in indexed
                 ]
+                if typ in FEATURES and (not support or not r["subject_id"].startswith("per_")):
+                    fail("profile.cited_person_required", r)
+                if typ == "person.photo":
+                    asset = indexed.get(r["value"]["asset_id"], {})
+                    if r["subject_id"] not in asset.get("portrait", {}).get("depicted_people", []):
+                        fail("portrait.subject_mismatch", r)
+                    if not any(c["source_id"] == asset.get("source_id") for c in support):
+                        fail("portrait.source_mismatch", r)
                 if origin == "source_statement" and not support:
                     fail("assertion.source_requires_citation", r)
                 if origin in {"researcher_derivation", "researcher_conclusion"} and (
@@ -331,7 +364,9 @@ class CorpusValidator:
                             else ("per_",)
                         )
                         prefixes = (
-                            ("plc_",)
+                            ("ast_",)
+                            if typ == "person.photo" and key == "asset_id"
+                            else ("plc_",)
                             if key == "place_id"
                             else ("asn_",)
                             if key == "adoption_event_id"

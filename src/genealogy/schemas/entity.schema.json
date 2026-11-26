@@ -235,6 +235,9 @@
             "admin",
             "withheld"
           ]
+        },
+        "profile_only": {
+          "const": true
         }
       },
       "required": [
@@ -414,6 +417,9 @@
               }
             }
           }
+        },
+        "profile_only": {
+          "const": true
         }
       },
       "required": [
@@ -605,6 +611,30 @@
             "fair_use_review",
             "unknown"
           ]
+        },
+        "portrait": {
+          "type": "object",
+          "properties": {
+            "depicted_people": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "pattern": "^per_[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+              },
+              "minItems": 1,
+              "uniqueItems": true
+            },
+            "attribution": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 240
+            }
+          },
+          "required": [
+            "depicted_people",
+            "attribution"
+          ],
+          "additionalProperties": false
         }
       },
       "required": [
@@ -1014,7 +1044,9 @@
             "relationship.adoption",
             "historical.enslavement",
             "person.sex",
-            "person.living"
+            "person.living",
+            "person.favorite_color",
+            "person.photo"
           ]
         },
         "subject_id": {
