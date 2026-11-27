@@ -158,7 +158,11 @@ def import_corpus(
         for e in r["evidence"]
     ]
     serving = []
-    serving_subjects = []
+    serving_subjects = [
+        (generation, doc["audience"], *link)
+        for doc in (public, family)
+        for link in projection_subjects(doc)
+    ]
     for doc in (public, family):
         for category in COLLECTIONS:
             for item in doc[category]:
@@ -171,9 +175,6 @@ def import_corpus(
                         json.dumps(item, sort_keys=True),
                     )
                 )
-        serving_subjects.extend(
-            (generation, doc["audience"], *link) for link in projection_subjects(doc)
-        )
     with connection.transaction():
         with connection.cursor() as cur:
             # Serialize concurrent writers; MVCC readers keep the old generation.
