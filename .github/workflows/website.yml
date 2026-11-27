@@ -63,5 +63,18 @@ jobs:
           git diff --exit-code -- src/genealogy/web/static/access.js src/genealogy/owner/owner.js
       - name: Owner and reader session boundaries and browser accessibility equivalence
         run: OWNER_BROWSER_TEST=1 .venv/bin/python -m pytest tests/test_owner_browser.py
+      - name: Capture the immutable released prototype on this runner
+        working-directory: ${{ runner.temp }}/baseline
+        run: |
+          npm ci
+          captures=scripts/browser_scenarios/captures/manifest.json
+          cp "$captures" "$RUNNER_TEMP/committed.json"
+          node scripts/browser_scenarios/prototype.mjs --capture
+          jq -n --slurpfile committed "$RUNNER_TEMP/committed.json" --slurpfile rendered "$captures" \
+            '{committed: $committed[0], rendered: $rendered[0]}' > "$RUNNER_TEMP/released-renders.json"
       - name: All nine synthetic browser variants
-        run: .venv/bin/python scripts/check_browser_suite.py --workers 2
+        env:
+          RELEASED_PROTOTYPE_CAPTURES: ${{ runner.temp }}/released-renders.json
+        run: |
+          node --test tests/prototype_render.mjs
+          .venv/bin/python scripts/check_browser_suite.py --workers 2

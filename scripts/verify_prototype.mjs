@@ -40,6 +40,19 @@ export function prototypeExpectations(raw) {
   return value;
 }
 
+// When linked host libraries rasterize differently, require the independently
+// installed released renderer to produce exactly the same bytes on this host.
+export function matchesRender(hash, name, proposed, reference) {
+  if (hash === proposed.captures[name]) return true;
+  return Boolean(
+    reference &&
+    proposed.sourceHash === reference.committed.sourceHash &&
+    proposed.sourceHash === reference.rendered.sourceHash &&
+    proposed.captures[name] === reference.committed.captures[name] &&
+    hash === reference.rendered.captures[name],
+  );
+}
+
 export async function checkPrototype({
   directory,
   specPath,
@@ -62,6 +75,11 @@ export async function checkPrototype({
     (await readdir(directory)).filter((f) => /\.(png|svg)$/.test(f)).sort(),
     artifacts.map((a) => a.name).sort(),
   );
+  const reference = process.env.RELEASED_PROTOTYPE_CAPTURES
+    ? JSON.parse(
+        await readFile(process.env.RELEASED_PROTOTYPE_CAPTURES, "utf8"),
+      )
+    : null;
   const spec = await readFile(specPath, "utf8");
   for (const item of artifacts) {
     assert(spec.includes(item.name), `Documentation missing ${item.name}`);
@@ -100,10 +118,10 @@ export async function checkPrototype({
           animations: "disabled",
           ...(item.element ? {} : { fullPage: true }),
         });
-        assert.equal(
-          createHash("sha256").update(fresh).digest("hex"),
-          manifest.captures[item.name],
-          `Fresh render differs: ${item.name}`,
+        const hash = createHash("sha256").update(fresh).digest("hex");
+        assert(
+          matchesRender(hash, item.name, manifest, reference),
+          `Fresh render differs from the accepted capture: ${item.name} (${hash})`,
         );
       }
       // Evidence cards have a consistent shape; ordinary prose never implies hidden evidence.
@@ -338,6 +356,6 @@ export async function checkPrototype({
     }
   });
   console.log(
-    `${artifacts.length} routes/captures checked; axe AA, keyboard navigation, privacy, history, escaping, and server checks passed.${verifyRenders ? " All fresh renders match committed PNGs." : ""}`,
+    `${artifacts.length} routes/captures checked; axe AA, keyboard navigation, privacy, history, escaping, and server checks passed.${verifyRenders ? " All fresh renders match the accepted pixel oracle." : ""}`,
   );
 }
