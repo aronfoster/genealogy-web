@@ -174,21 +174,23 @@ def verify_serving(
     tokens = {}
     for audience in ("public", "family"):
         with store.open(audience) as repo:
-            row = repo.connection.execute(
+            rows = repo.connection.execute(
                 sql.SQL("SELECT document FROM publication.{}").format(
                     sql.Identifier(audience + "_document")
                 )
-            ).fetchone()
-            if row is None:
-                raise ValueError("missing serving document")
-            doc = row[0]
+            ).fetchmany(2)
+            if len(rows) != 1:
+                raise ValueError("expected exactly one serving document")
+            doc = rows[0][0]
             validate_output(doc, audience, profile)
             observed = repo.connection.execute(
-                sql.SQL("SELECT category,document FROM {}.entity ORDER BY id").format(repo.schema)
+                sql.SQL(
+                    'SELECT id,category,document FROM {}.entity ORDER BY id COLLATE "C", category COLLATE "C"'
+                ).format(repo.schema)
             ).fetchall()
             expected = sorted(
-                ((category, row) for category in COLLECTIONS for row in doc[category]),
-                key=lambda pair: pair[1]["id"],
+                ((row["id"], category, row) for category in COLLECTIONS for row in doc[category]),
+                key=lambda entry: entry[:2],
             )
             if observed != expected:
                 raise ValueError("serving rows differ from projection")

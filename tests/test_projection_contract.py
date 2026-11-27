@@ -553,6 +553,15 @@ def test_installed_projection_tokens_and_native_rows(tmp_path, database):
         PostgresStore(*dsns, public_token=tokens["public"])
     with pytest.raises(ValueError, match="descriptor"):
         verify_serving(store, raw, digest(raw), ENHANCED, "3" * 40, inputs.digest)
+    admin.execute("ALTER VIEW publication.public_document RENAME TO single_public_document")
+    admin.execute(
+        "CREATE VIEW publication.public_document AS SELECT document FROM publication.single_public_document CROSS JOIN generate_series(1,2)"
+    )
+    admin.execute("GRANT SELECT ON publication.public_document TO genealogy_public_ro")
+    with pytest.raises(ValueError, match="exactly one serving document"):
+        verify_serving(store, raw, digest(raw), ENHANCED, TARGET, inputs.digest)
+    admin.execute("DROP VIEW publication.public_document")
+    admin.execute("ALTER VIEW publication.single_public_document RENAME TO public_document")
     admin.execute("UPDATE genealogy.serving_entity SET category='unknown' WHERE audience='family'")
     with pytest.raises(ValueError, match="serving rows"):
         verify_serving(store, raw, digest(raw), ENHANCED, TARGET, inputs.digest)
