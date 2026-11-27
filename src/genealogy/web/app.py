@@ -273,7 +273,12 @@ def create_app(
                 elif route == "source":
                     data = presenter.source(rid)
                     for asset in data["assets"]:
-                        asset["can_open"] = bool(asset_url and asset["bytes_available"])
+                        if "portrait_attribution" in asset:
+                            asset["can_open"] = bool(portrait_root and asset["bytes_available"])
+                            if asset["can_open"]:
+                                asset["url"] = f"/portraits/{audience}/{asset['id']}"
+                        else:
+                            asset["can_open"] = bool(asset_url and asset["bytes_available"])
                     title = data["title"]
                 elif route == "portrait":
                     # Scope is a restriction on the URL. Session and the current

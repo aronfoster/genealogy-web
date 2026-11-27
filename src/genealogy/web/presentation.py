@@ -605,7 +605,17 @@ class Presenter:
                 self.citation(c["id"]) for c in self.repo.source_items(source_id, "citations")
             ],
             "assets": [
-                {k: a[k] for k in ("id", "label", "media_type", "bytes_available")}
+                {
+                    k: a[k]
+                    for k in (
+                        "id",
+                        "label",
+                        "media_type",
+                        "bytes_available",
+                        "portrait_attribution",
+                    )
+                    if k in a
+                }
                 for a in self.repo.source_items(source_id, "assets")
             ],
             "used_for": used_for,

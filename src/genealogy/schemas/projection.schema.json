@@ -370,7 +370,11 @@
           "$ref": "urn:genealogy:entity#/oneOf/3/properties/inspection"
         },
         "locations": {
-          "$ref": "urn:genealogy:entity#/oneOf/3/properties/locations"
+          "type": "array",
+          "maxItems": 100,
+          "items": {
+            "$ref": "urn:genealogy:entity#/oneOf/3/properties/locations/items"
+          }
         },
         "transcription": {
           "$ref": "urn:genealogy:entity#/oneOf/3/properties/transcription"

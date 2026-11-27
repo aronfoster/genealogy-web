@@ -63,7 +63,11 @@ def output_validator() -> Draft202012Validator:
 
 
 def validate_output(doc: dict[str, Any], audience: str, profile: str) -> None:
-    if profile not in PROFILES or doc.get("audience") != audience:
+    if (
+        type(doc.get("schema_version")) is not int
+        or profile not in PROFILES
+        or doc.get("audience") != audience
+    ):
         raise ValueError("unsupported projection target")
     if profile == ENHANCED:
         if doc.get("projection_profile") != profile or doc.get("required_capabilities") != list(

@@ -61,5 +61,7 @@ jobs:
           npm ci
           npm run build
           git diff --exit-code -- src/genealogy/web/static/access.js src/genealogy/owner/owner.js
+      - name: Owner and reader session boundaries and browser accessibility equivalence
+        run: OWNER_BROWSER_TEST=1 .venv/bin/python -m pytest tests/test_owner_browser.py
       - name: All nine synthetic browser variants
         run: .venv/bin/python scripts/check_browser_suite.py --workers 2

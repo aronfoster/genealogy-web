@@ -6,14 +6,13 @@ import os
 import struct
 import subprocess
 import sys
-import uuid
 import zlib
+from pathlib import Path
 
 import psycopg
 import pytest
 from browser_scenarios.records import identifier
 from check_synthetic_browser import materialize
-from check_web import serialized_migration
 from portrait_proxy import proxy_client
 from psycopg import sql
 from psycopg.conninfo import make_conninfo
@@ -249,37 +248,6 @@ def test_fail_before_transaction(tmp_path):
         validate_output(invalid, "public", ENHANCED)
 
 
-@pytest.fixture
-def database():
-    url = os.getenv("TEST_DATABASE_URL")
-    if not url:
-        pytest.skip("requires a disposable PostgreSQL cluster")
-    db = "contract_" + uuid.uuid4().hex
-    roles = [db + "_p", db + "_f"]
-    with psycopg.connect(url, autocommit=True) as cluster:
-        cluster.execute(sql.SQL("CREATE DATABASE {}").format(sql.Identifier(db)))
-        try:
-            dsn = make_conninfo(url, dbname=db)
-            with psycopg.connect(dsn, autocommit=True) as admin:
-                serialized_migration(cluster, admin)
-                for role, aud in zip(roles, ("public", "family"), strict=True):
-                    admin.execute(
-                        sql.SQL("CREATE ROLE {} LOGIN PASSWORD 'workshop'").format(
-                            sql.Identifier(role)
-                        )
-                    )
-                    admin.execute(
-                        sql.SQL("GRANT {} TO {}").format(
-                            sql.Identifier("genealogy_" + aud + "_ro"), sql.Identifier(role)
-                        )
-                    )
-                yield admin, [make_conninfo(dsn, user=r, password="workshop") for r in roles]
-        finally:
-            cluster.execute(sql.SQL("DROP DATABASE {}").format(sql.Identifier(db)))
-            for role in roles:
-                cluster.execute(sql.SQL("DROP ROLE IF EXISTS {}").format(sql.Identifier(role)))
-
-
 def test_http_and_sql_across_generations(tmp_path, database, request):
     inputs, person, asset = samples(tmp_path)
     admin, dsns = database
@@ -339,6 +307,20 @@ def test_http_and_sql_across_generations(tmp_path, database, request):
         return docs
 
     old = os.getenv("BASELINE_READER_PATH")
+
+    def released_profile():
+        return subprocess.check_output(
+            [
+                sys.executable,
+                str(Path(__file__).with_name("released_profile.py")),
+                *dsns,
+                page,
+                asset["id"],
+            ],
+            cwd=tmp_path,
+            env={**os.environ, "PYTHONPATH": old},
+        )
+
     old_html = None
     legacy_root = tmp_path / "legacy"
     legacy_root.mkdir()
@@ -387,7 +369,8 @@ def test_http_and_sql_across_generations(tmp_path, database, request):
             env=env,
             check=True,
         )
-        old_html = client.get(page).content
+        old_html = released_profile()
+        assert old_html == client.get(page).content
     stage(BASELINE)
     baseline = client.get(page)
     assert baseline.status_code == 200 and "Favorite color" not in baseline.text
@@ -395,14 +378,7 @@ def test_http_and_sql_across_generations(tmp_path, database, request):
     assert client.get(url).status_code == 404
     old = os.getenv("BASELINE_READER_PATH")
     if old:
-        # Execute the installed old reader in a clean interpreter against the same SQL views.
-        script = "from genealogy.web.app import create_app; from genealogy.web.repository import PostgresStore; from starlette.testclient import TestClient; import sys; c=TestClient(create_app(store=PostgresStore(*sys.argv[1:3]),authorize_family=lambda _:True)); r=c.get(sys.argv[3]); assert r.status_code==200; assert c.get('/assets/'+sys.argv[4]).status_code==404; sys.stdout.buffer.write(r.content)"
-        result = subprocess.check_output(
-            [sys.executable, "-c", script, *dsns, page, asset["id"]],
-            cwd=tmp_path,
-            env={**os.environ, "PYTHONPATH": old},
-        )
-        assert result == baseline.content == old_html
+        assert released_profile() == baseline.content == old_html
     stage(ENHANCED)
     assert "teal &lt;blue&gt;" in client.get(page).text
     assert client.get(url).content == png()
@@ -448,3 +424,38 @@ def test_http_and_sql_across_generations(tmp_path, database, request):
                     and "Cookie" in response.headers["vary"]
                 )
                 assert not {"etag", "last-modified", "location"} & set(response.headers)
+
+
+def test_public_photo_catalog_and_bytes(tmp_path, database):
+    inputs, person, asset = samples(tmp_path, "public")
+    admin, dsns = database
+    public, family = outputs(tmp_path, inputs, ENHANCED)
+    # The privacy filter may remove every hosted location from a visible citation.
+    redacted = copy.deepcopy(public)
+    redacted["citations"][0]["locations"] = []
+    validate_output(redacted, "public", ENHANCED)
+    raw = canonical_bytes(descriptor(public, family, ENHANCED, TARGET, inputs.digest))
+    import_corpus(
+        tmp_path / "corpus",
+        admin,
+        "1" * 40,
+        publication_inputs=inputs,
+        build_year=inputs.build_year,
+        asset_root=tmp_path / "assets",
+        profile=ENHANCED,
+        descriptor_bytes=raw,
+        descriptor_sha256=digest(raw),
+        target_runtime=TARGET,
+    )
+    client = TestClient(create_app(store=PostgresStore(*dsns), portrait_root=tmp_path / "assets"))
+    url = "/portraits/public/" + asset["id"]
+    assert client.get("/api/people/" + person).json()["profile_photo"] == {
+        "url": url,
+        "attribution": "Workshop artist",
+    }
+    assert url in client.get("/sources/" + asset["source_id"]).text
+    assert url in client.get("/api/sources/" + asset["source_id"]).text
+    assert client.get(url).content == png()
+    assert client.get(url.replace("/public/", "/family/")).status_code == 404
+    (tmp_path / "assets" / asset["sha256"]).write_bytes(b"changed derivative")
+    assert client.get(url).status_code == 404
