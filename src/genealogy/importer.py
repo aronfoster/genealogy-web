@@ -9,7 +9,15 @@ from typing import Any
 
 from .model import canonical_bytes, read_records
 from .name_policy import NamePolicy
-from .projection_contract import BASELINE, COLLECTIONS, FEATURES, descriptor, verify_descriptor
+from .projection_contract import (
+    BASELINE,
+    COLLECTIONS,
+    FEATURES,
+    assertion_subjects,
+    descriptor,
+    projection_subjects,
+    verify_descriptor,
+)
 from .publication import compile_publications
 from .publication_inputs import PublicationInputs
 from .validation import CorpusValidator
@@ -67,16 +75,6 @@ def deterministic_rows(records: list[dict[str, Any]]) -> list[tuple[str, str, st
         for r in sorted(records, key=lambda x: x["id"])
         if r["type"] not in {"consent", "research_question"}
     ]
-
-
-def assertion_subjects(record: dict[str, Any]) -> list[tuple[str, str]]:
-    typ, value = record["assertion_type"], record["value"]
-    if typ == "relationship.parent_child":
-        return [("child", value["child_id"]), ("parent", value["parent_id"])]
-    result = [("subject", record["subject_id"])]
-    if "other_id" in value:
-        result.append(("other", value["other_id"]))
-    return result
 
 
 def import_corpus(
@@ -160,7 +158,11 @@ def import_corpus(
         for e in r["evidence"]
     ]
     serving = []
-    serving_subjects = []
+    serving_subjects = [
+        (generation, doc["audience"], *link)
+        for doc in (public, family)
+        for link in projection_subjects(doc)
+    ]
     for doc in (public, family):
         for category in COLLECTIONS:
             for item in doc[category]:
@@ -173,11 +175,6 @@ def import_corpus(
                         json.dumps(item, sort_keys=True),
                     )
                 )
-                if category in {"assertions", "alternatives", "history"}:
-                    for role, ref in assertion_subjects(item):
-                        serving_subjects.append(
-                            (generation, doc["audience"], item["id"], role, ref)
-                        )
     with connection.transaction():
         with connection.cursor() as cur:
             # Serialize concurrent writers; MVCC readers keep the old generation.

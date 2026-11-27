@@ -46,6 +46,13 @@ uses a separate origin, Firebase project and operator privileges. Feedback
 delivery is off by default. Its existing YouTrack integration requires the
 reviewed project identity and receipt format of the operator installation.
 
+For a bound installation, startup verification compares each audience’s document,
+entity rows and assertion links with its sealed projection. Supply both
+`GENEALOGY_PUBLIC_PROJECTION_TOKEN` and `GENEALOGY_FAMILY_PROJECTION_TOKEN`.
+Each read transaction checks its audience’s document token. Privileged edits to
+the active serving rows can leave the token unchanged. Treat active rows as
+immutable and run startup verification again after database maintenance.
+
 For automated work, use invented data for examples and run validation from the
 installed environment. Keep private provisioning, service configuration and
 release commands in the operator checkout. A successful synthetic compile

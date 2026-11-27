@@ -523,3 +523,86 @@ def test_living_person_with_public_grant_stays_family_only(tmp_path, profile):
     public, family = outputs(tmp_path, inputs, profile)
     assert pid not in json.dumps(public)
     assert pid in {r["id"] for r in family["people"]}
+
+
+def test_installed_projection_tokens_and_native_rows(tmp_path, database, monkeypatch):
+    from genealogy.projection_contract import verify_serving
+
+    inputs, _, _ = samples(tmp_path)
+    admin, dsns = database
+    public, family = outputs(tmp_path, inputs, ENHANCED)
+    raw = canonical_bytes(descriptor(public, family, ENHANCED, TARGET, inputs.digest))
+    import_corpus(
+        tmp_path / "corpus",
+        admin,
+        "1" * 40,
+        publication_inputs=inputs,
+        build_year=inputs.build_year,
+        asset_root=tmp_path / "assets",
+        profile=ENHANCED,
+        descriptor_bytes=raw,
+        descriptor_sha256=digest(raw),
+        target_runtime=TARGET,
+    )
+    store = PostgresStore(*dsns)
+    tokens = verify_serving(store, raw, digest(raw), ENHANCED, TARGET, inputs.digest)
+    bound = PostgresStore(*dsns, public_token=tokens["public"], family_token=tokens["family"])
+    with bound.open("family") as reader:
+        assert reader.listing_token() == tokens["family"]
+    with pytest.raises(ValueError, match="both audience"):
+        PostgresStore(*dsns, public_token=tokens["public"])
+    with pytest.raises(ValueError, match="descriptor"):
+        verify_serving(store, raw, digest(raw), ENHANCED, "3" * 40, inputs.digest)
+    monkeypatch.setenv("GENEALOGY_PUBLIC_DSN", dsns[0])
+    monkeypatch.setenv("GENEALOGY_FAMILY_DSN", dsns[1])
+    monkeypatch.setenv("GENEALOGY_PUBLIC_PROJECTION_TOKEN", tokens["public"])
+    monkeypatch.delenv("GENEALOGY_FAMILY_PROJECTION_TOKEN", raising=False)
+    with pytest.raises(ValueError, match="both audience"):
+        create_app()
+    monkeypatch.setenv("GENEALOGY_FAMILY_PROJECTION_TOKEN", tokens["family"])
+    assert TestClient(create_app()).get("/").status_code == 200
+    monkeypatch.setenv("GENEALOGY_PUBLIC_PROJECTION_TOKEN", "public:" + "0" * 64)
+    assert TestClient(create_app()).get("/").status_code == 503
+    for audience in ("public", "family"):
+        links = admin.execute(
+            "DELETE FROM genealogy.serving_subject WHERE audience=%s RETURNING generation,audience,assertion_id,role,ref_id",
+            (audience,),
+        ).fetchall()
+        assert links
+        with pytest.raises(ValueError, match="subject links"):
+            verify_serving(store, raw, digest(raw), ENHANCED, TARGET, inputs.digest)
+        with admin.cursor() as cur:
+            cur.executemany(
+                "INSERT INTO genealogy.serving_subject(generation,audience,assertion_id,role,ref_id) VALUES (%s,%s,%s,%s,%s)",
+                links,
+            )
+        gen, aud, assertion, role, ref = links[0]
+        admin.execute(
+            "UPDATE genealogy.serving_subject SET role='incorrect' WHERE (generation,audience,assertion_id,role,ref_id)=(%s,%s,%s,%s,%s)",
+            links[0],
+        )
+        with pytest.raises(ValueError, match="subject links"):
+            verify_serving(store, raw, digest(raw), ENHANCED, TARGET, inputs.digest)
+        admin.execute(
+            "UPDATE genealogy.serving_subject SET role=%s WHERE (generation,audience,assertion_id,role,ref_id)=(%s,%s,%s,'incorrect',%s)",
+            (role, gen, aud, assertion, ref),
+        )
+    admin.execute("ALTER VIEW publication.public_document RENAME TO single_public_document")
+    admin.execute(
+        "CREATE VIEW publication.public_document AS SELECT document FROM publication.single_public_document CROSS JOIN generate_series(1,2)"
+    )
+    admin.execute("GRANT SELECT ON publication.public_document TO genealogy_public_ro")
+    with pytest.raises(ValueError, match="exactly one serving document"):
+        verify_serving(store, raw, digest(raw), ENHANCED, TARGET, inputs.digest)
+    admin.execute("DROP VIEW publication.public_document")
+    admin.execute("ALTER VIEW publication.single_public_document RENAME TO public_document")
+    admin.execute("UPDATE genealogy.serving_entity SET category='unknown' WHERE audience='family'")
+    with pytest.raises(ValueError, match="serving rows"):
+        verify_serving(store, raw, digest(raw), ENHANCED, TARGET, inputs.digest)
+    admin.execute(
+        "UPDATE genealogy.projection_stage SET document=document || '{\"changed\":true}'::jsonb WHERE audience='family'"
+    )
+    with pytest.raises(RuntimeError, match="installed release"), bound.open("family"):
+        pass
+    with bound.open("public") as reader:
+        assert reader.listing_token() == tokens["public"]

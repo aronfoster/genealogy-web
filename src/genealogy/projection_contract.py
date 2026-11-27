@@ -162,3 +162,68 @@ def verify_descriptor(raw: bytes, expected_digest: str, expected: dict[str, Any]
         or strict_json(raw) != expected
     ):
         raise ValueError("projection descriptor does not match accepted target and documents")
+
+
+def assertion_subjects(record: dict[str, Any]) -> list[tuple[str, str]]:
+    typ, value = record["assertion_type"], record["value"]
+    if typ == "relationship.parent_child":
+        return [("child", value["child_id"]), ("parent", value["parent_id"])]
+    result = [("subject", record["subject_id"])]
+    if "other_id" in value:
+        result.append(("other", value["other_id"]))
+    return result
+
+
+def projection_subjects(doc: dict[str, Any]) -> list[tuple[str, str, str]]:
+    return [
+        (row["id"], role, ref)
+        for category in ("assertions", "alternatives", "history")
+        for row in doc[category]
+        for role, ref in assertion_subjects(row)
+    ]
+
+
+def verify_serving(
+    store: Any, raw: bytes, expected_digest: str, profile: str, runtime: str, inputs_digest: str
+) -> dict[str, str]:
+    """Measure both least-privileged reader views against the sealed descriptor."""
+    from psycopg import sql
+
+    docs = []
+    tokens = {}
+    for audience in ("public", "family"):
+        with store.open(audience) as repo:
+            rows = repo.connection.execute(
+                sql.SQL("SELECT document FROM publication.{}").format(
+                    sql.Identifier(audience + "_document")
+                )
+            ).fetchmany(2)
+            if len(rows) != 1:
+                raise ValueError("expected exactly one serving document")
+            doc = rows[0][0]
+            validate_output(doc, audience, profile)
+            observed = repo.connection.execute(
+                sql.SQL(
+                    'SELECT id,category,document FROM {}.entity ORDER BY id COLLATE "C", category COLLATE "C"'
+                ).format(repo.schema)
+            ).fetchall()
+            expected = sorted(
+                ((row["id"], category, row) for category in COLLECTIONS for row in doc[category]),
+                key=lambda entry: entry[:2],
+            )
+            if observed != expected:
+                raise ValueError("serving rows differ from projection")
+            links = repo.connection.execute(
+                sql.SQL(
+                    "SELECT assertion_id,role,ref_id FROM {}.assertion_subject "
+                    'ORDER BY assertion_id COLLATE "C", role COLLATE "C", ref_id COLLATE "C"'
+                ).format(repo.schema)
+            ).fetchall()
+            if links != sorted(projection_subjects(doc)):
+                raise ValueError("serving subject links differ from projection")
+            docs.append(doc)
+            tokens[audience] = repo.listing_token()
+    verify_descriptor(
+        raw, expected_digest, descriptor(docs[0], docs[1], profile, runtime, inputs_digest)
+    )
+    return tokens

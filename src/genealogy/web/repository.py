@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from collections.abc import Iterator
 from contextlib import contextmanager
 from typing import Any, Literal
@@ -130,7 +131,20 @@ class Repository:
 
 
 class PostgresStore:
-    def __init__(self, public_dsn: str, family_dsn: str | None = None) -> None:
+    def __init__(
+        self,
+        public_dsn: str,
+        family_dsn: str | None = None,
+        *,
+        public_token: str | None = None,
+        family_token: str | None = None,
+    ) -> None:
+        self.tokens = {"public": public_token, "family": family_token}
+        if any(t is not None for t in self.tokens.values()) and not all(
+            isinstance(t, str) and re.fullmatch(a + ":[0-9a-f]{64}", t)
+            for a, t in self.tokens.items()
+        ):
+            raise ValueError("both audience projection tokens are required")
         self.dsns = {"public": public_dsn, "family": family_dsn}
 
     @contextmanager
@@ -158,4 +172,10 @@ class PostgresStore:
                         sql.Identifier("genealogy_" + audience + "_ro")
                     )
                 )
-                yield Repository(connection, audience)
+                repository = Repository(connection, audience)
+                # Startup measures entity rows and assertion links. This transaction
+                # binds its document token across normal publication changes.
+                token = self.tokens[audience]
+                if token is not None and repository.listing_token() != token:
+                    raise RuntimeError("Serving projection differs from installed release")
+                yield repository
