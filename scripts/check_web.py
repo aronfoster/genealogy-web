@@ -50,9 +50,7 @@ def serialized_migration(
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument(
-        "--historical", action="store_true", help="Reproduce the frozen workshop"
-    )
+    parser.add_argument("--historical", action="store_true", help="Reproduce the frozen workshop")
     parser.add_argument(
         "--family",
         action="store_true",
@@ -63,9 +61,7 @@ def main() -> None:
         action="store_true",
         help="Overlay workshop source inputs in a disposable preview",
     )
-    parser.add_argument(
-        "--names-preview", action="store_true", help="Overlay workshop name inputs"
-    )
+    parser.add_argument("--names-preview", action="store_true", help="Overlay workshop name inputs")
     publication_arguments(parser)
     parser.add_argument("--expectations", type=Path)
     parser.add_argument("--historical-root", type=Path)
@@ -90,11 +86,14 @@ def main() -> None:
         parser.error("workshop expectations and explicit inputs are required")
     if args.historical and not args.historical_root:
         parser.error("historical workshop requires an explicit historical root")
-    if args.source_preview and not args.source_overlay or args.names_preview and not args.names_overlay:
+    if (
+        args.source_preview
+        and not args.source_overlay
+        or args.names_preview
+        and not args.names_overlay
+    ):
         parser.error("preview requires its explicit workshop overlay")
-    scenario = ScenarioInputs.load(
-        args.expectations, kind
-    )
+    scenario = ScenarioInputs.load(args.expectations, kind)
     if args.historical:
         root = safe_path(args.historical_root)
         if args.corpus and args.corpus != root / "corpus":

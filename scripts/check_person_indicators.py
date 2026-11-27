@@ -194,5 +194,6 @@ def main() -> None:
             server.should_exit = True
             thread.join(timeout=10)
 
+
 if __name__ == "__main__":
     main()

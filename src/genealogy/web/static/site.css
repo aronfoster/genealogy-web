@@ -697,3 +697,12 @@ section {
   outline: 3px solid var(--focus);
   outline-offset: 3px;
 }
+
+.profile-portrait {
+  margin-inline: 0;
+}
+.profile-portrait img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}

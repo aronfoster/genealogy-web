@@ -1,0 +1,496 @@
+{
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "audience": {
+      "enum": [
+        "public",
+        "family"
+      ]
+    },
+    "people": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/people"
+      }
+    },
+    "personas": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/personas"
+      }
+    },
+    "assertions": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/assertions"
+      }
+    },
+    "alternatives": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/alternatives"
+      }
+    },
+    "history": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/history"
+      }
+    },
+    "places": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/places"
+      }
+    },
+    "narratives": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/narratives"
+      }
+    },
+    "sources": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/sources"
+      }
+    },
+    "citations": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/citations"
+      }
+    },
+    "assets": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/assets"
+      }
+    },
+    "projection_profile": {
+      "const": "profile-v1"
+    },
+    "required_capabilities": {
+      "const": [
+        "favorite-color",
+        "profile-photo"
+      ]
+    }
+  },
+  "required": [
+    "schema_version",
+    "audience",
+    "people",
+    "personas",
+    "assertions",
+    "alternatives",
+    "history",
+    "places",
+    "narratives",
+    "sources",
+    "citations",
+    "assets"
+  ],
+  "additionalProperties": false,
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:genealogy:projection",
+  "$defs": {
+    "people": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^per_[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+        },
+        "family_scope": {
+          "enum": [
+            "tree",
+            "possible",
+            "other"
+          ]
+        },
+        "slave": {
+          "type": "boolean"
+        },
+        "indicators": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "icon": {
+                "type": "string"
+              },
+              "label": {
+                "type": "string"
+              },
+              "detail": {
+                "type": "string"
+              },
+              "basis": {
+                "type": "string"
+              },
+              "rule_version": {
+                "type": "string"
+              },
+              "inference_version": {
+                "type": "string"
+              },
+              "confidence_basis": {
+                "type": "string"
+              },
+              "assertion_ids": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "pattern": "^asn_[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                }
+              },
+              "confidence": {
+                "type": "number"
+              },
+              "extrapolated": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "icon",
+              "label",
+              "detail",
+              "basis",
+              "rule_version",
+              "assertion_ids"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "display_name_assertion_id": {
+          "type": "string",
+          "pattern": "^asn_[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+        },
+        "favorite_color": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "pattern": "^[^\\x00-\\x1f\\x7f]*\\S[^\\x00-\\x1f\\x7f]*$"
+        },
+        "profile_photo": {
+          "type": "object",
+          "properties": {
+            "asset_id": {
+              "type": "string",
+              "pattern": "^ast_[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+            },
+            "width": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 2048
+            },
+            "height": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 2048
+            }
+          },
+          "required": [
+            "asset_id"
+          ],
+          "additionalProperties": false,
+          "dependentRequired": {
+            "width": [
+              "height"
+            ],
+            "height": [
+              "width"
+            ]
+          }
+        },
+        "profile_citations": {
+          "type": "object",
+          "minProperties": 1,
+          "additionalProperties": false,
+          "properties": {
+            "favorite_color": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": {
+                "$ref": "#/$defs/citations/properties/id"
+              }
+            },
+            "profile_photo": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": {
+                "$ref": "#/$defs/citations/properties/id"
+              }
+            }
+          }
+        }
+      },
+      "required": [
+        "id",
+        "family_scope",
+        "slave",
+        "indicators"
+      ],
+      "additionalProperties": false
+    },
+    "personas": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^psn_[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+        },
+        "raw_name": {
+          "$ref": "urn:genealogy:entity#/oneOf/1/properties/raw_name"
+        },
+        "role": {
+          "$ref": "urn:genealogy:entity#/oneOf/1/properties/role"
+        },
+        "citation_id": {
+          "$ref": "urn:genealogy:entity#/oneOf/1/properties/citation_id"
+        }
+      },
+      "required": [
+        "id",
+        "raw_name",
+        "role",
+        "citation_id"
+      ],
+      "additionalProperties": false
+    },
+    "assertions": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^asn_[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+        },
+        "subject_id": {
+          "$ref": "urn:genealogy:entity#/oneOf/9/properties/subject_id"
+        },
+        "assertion_type": {
+          "$ref": "urn:genealogy:entity#/oneOf/9/properties/assertion_type"
+        },
+        "value": {
+          "$ref": "urn:genealogy:entity#/oneOf/9/properties/value"
+        },
+        "status": {
+          "$ref": "urn:genealogy:entity#/oneOf/9/properties/status"
+        },
+        "origin": {
+          "$ref": "urn:genealogy:entity#/oneOf/9/properties/origin"
+        },
+        "grade": {
+          "$ref": "urn:genealogy:entity#/oneOf/9/properties/grade"
+        },
+        "evidence": {
+          "$ref": "urn:genealogy:entity#/oneOf/9/properties/evidence"
+        },
+        "superseded_by": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^asn_[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          }
+        },
+        "conflict_group": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "subject_id",
+        "assertion_type",
+        "value",
+        "status",
+        "origin"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "$ref": "urn:genealogy:assertion-values"
+        }
+      ]
+    },
+    "alternatives": {
+      "$ref": "#/$defs/assertions"
+    },
+    "history": {
+      "$ref": "#/$defs/assertions"
+    },
+    "places": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^plc_[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+        },
+        "label": {
+          "$ref": "urn:genealogy:entity#/oneOf/4/properties/label"
+        }
+      },
+      "required": [
+        "id",
+        "label"
+      ],
+      "additionalProperties": false
+    },
+    "narratives": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^nar_[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+        },
+        "title": {
+          "$ref": "urn:genealogy:entity#/oneOf/6/properties/title"
+        },
+        "body": {
+          "$ref": "urn:genealogy:entity#/oneOf/6/properties/body"
+        },
+        "subjects": {
+          "$ref": "urn:genealogy:entity#/oneOf/6/properties/subjects"
+        },
+        "assertions": {
+          "$ref": "urn:genealogy:entity#/oneOf/6/properties/assertions"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "body",
+        "subjects",
+        "assertions"
+      ],
+      "additionalProperties": false
+    },
+    "sources": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^src_[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+        },
+        "title": {
+          "$ref": "urn:genealogy:entity#/oneOf/2/properties/title"
+        },
+        "source_kind": {
+          "$ref": "urn:genealogy:entity#/oneOf/2/properties/source_kind"
+        },
+        "reader_description": {
+          "$ref": "urn:genealogy:entity#/oneOf/2/properties/reader_description"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "source_kind"
+      ],
+      "additionalProperties": false
+    },
+    "citations": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^cit_[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+        },
+        "source_id": {
+          "$ref": "urn:genealogy:entity#/oneOf/3/properties/source_id"
+        },
+        "locator": {
+          "$ref": "urn:genealogy:entity#/oneOf/3/properties/locator"
+        },
+        "inspection": {
+          "$ref": "urn:genealogy:entity#/oneOf/3/properties/inspection"
+        },
+        "locations": {
+          "type": "array",
+          "maxItems": 100,
+          "items": {
+            "$ref": "urn:genealogy:entity#/oneOf/3/properties/locations/items"
+          }
+        },
+        "transcription": {
+          "$ref": "urn:genealogy:entity#/oneOf/3/properties/transcription"
+        }
+      },
+      "required": [
+        "id",
+        "source_id",
+        "locator",
+        "inspection"
+      ],
+      "additionalProperties": false
+    },
+    "assets": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^ast_[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+        },
+        "label": {
+          "$ref": "urn:genealogy:entity#/oneOf/5/properties/label"
+        },
+        "media_type": {
+          "$ref": "urn:genealogy:entity#/oneOf/5/properties/media_type"
+        },
+        "source_id": {
+          "$ref": "urn:genealogy:entity#/oneOf/5/properties/source_id"
+        },
+        "sha256": {
+          "$ref": "urn:genealogy:entity#/oneOf/5/properties/sha256"
+        },
+        "bytes_available": {
+          "type": "boolean"
+        },
+        "portrait_attribution": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "id",
+        "label",
+        "media_type",
+        "source_id",
+        "bytes_available"
+      ],
+      "additionalProperties": false,
+      "if": {
+        "properties": {
+          "bytes_available": {
+            "const": true
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "sha256"
+        ]
+      },
+      "else": {
+        "not": {
+          "required": [
+            "sha256"
+          ]
+        }
+      }
+    }
+  },
+  "dependentRequired": {
+    "projection_profile": [
+      "required_capabilities"
+    ],
+    "required_capabilities": [
+      "projection_profile"
+    ]
+  }
+}

@@ -1,0 +1,85 @@
+name: Website
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, edited]
+  push:
+    branches: [main]
+permissions:
+  contents: read
+concurrency:
+  group: website-${{ (github.event.action != 'edited' || github.event.changes.base != null) && github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' && (github.event.action != 'edited' || github.event.changes.base != null) }}
+jobs:
+  website:
+    if: ${{ github.event.action != 'edited' || github.event.changes.base != null }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ["5432:5432"]
+        options: --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 12
+    env:
+      TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884
+        with:
+          enable-cache: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: 22
+          package-manager-cache: false
+      - name: Build and install the released and proposed wheels
+        run: |
+          uv sync --locked --all-extras
+          git worktree add --detach "$RUNNER_TEMP/baseline" bff431ac4bba664f2e2b7250c995150fbca4d153
+          uv build --wheel "$RUNNER_TEMP/baseline" --out-dir "$RUNNER_TEMP/old-dist"
+          uv pip install --no-deps --target "$RUNNER_TEMP/old-reader" "$RUNNER_TEMP"/old-dist/*.whl
+          uv build --wheel --out-dir "$RUNNER_TEMP/current-dist"
+          uv pip install --no-deps --reinstall --python .venv/bin/python "$RUNNER_TEMP"/current-dist/*.whl
+      - name: Check Python formatting, lint and types
+        run: |
+          uv run --locked ruff format --check .
+          uv run --locked ruff check .
+          uv run --locked mypy src
+      - name: Synthetic database, HTTP and released-reader compatibility
+        run: |
+          if ! command -v nginx >/dev/null; then
+            sudo apt-get update -qq
+            sudo apt-get install -y nginx-light
+          fi
+          PORTRAIT_PROXY_TEST=1 BASELINE_READER_PATH="$RUNNER_TEMP/old-reader" .venv/bin/python -m pytest
+      - name: Installed owner authorization under service isolation
+        run: |
+          sudo systemd-run --quiet --wait --pipe --collect --uid="$(id -un)" \
+            -p NoNewPrivileges=yes -p ProtectSystem=strict -p PrivateTmp=yes \
+            -p "WorkingDirectory=$GITHUB_WORKSPACE" \
+            "$GITHUB_WORKSPACE/.venv/bin/python" -m pytest -p no:cacheprovider tests/test_owner_access.py
+      - name: Rebuild authentication and owner clients
+        run: |
+          npm ci
+          npm run build
+          git diff --exit-code -- src/genealogy/web/static/access.js src/genealogy/owner/owner.js
+      - name: Owner and reader session boundaries and browser accessibility equivalence
+        run: OWNER_BROWSER_TEST=1 .venv/bin/python -m pytest tests/test_owner_browser.py
+      - name: Capture the immutable released prototype on this runner
+        working-directory: ${{ runner.temp }}/baseline
+        run: |
+          npm ci
+          captures=scripts/browser_scenarios/captures/manifest.json
+          cp "$captures" "$RUNNER_TEMP/committed.json"
+          node scripts/browser_scenarios/prototype.mjs --capture
+          jq -n --slurpfile committed "$RUNNER_TEMP/committed.json" --slurpfile rendered "$captures" \
+            '{committed: $committed[0], rendered: $rendered[0]}' > "$RUNNER_TEMP/released-renders.json"
+      - name: All nine synthetic browser variants
+        env:
+          RELEASED_PROTOTYPE_CAPTURES: ${{ runner.temp }}/released-renders.json
+        run: |
+          node --test tests/prototype_render.mjs
+          .venv/bin/python scripts/check_browser_suite.py --workers 2

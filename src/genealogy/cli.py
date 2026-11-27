@@ -14,7 +14,8 @@ from .input_options import load_publication_inputs, publication_arguments, write
 from .migrations import migrate_corpus
 from .model import canonical_bytes
 from .name_policy import NamePolicy
-from .publication import compile_publication
+from .projection_contract import BASELINE, PROFILES, descriptor
+from .publication import compile_publication, compile_publications
 from .publication_inputs import PublicationInputs
 from .validation import CorpusInvalid, CorpusValidator
 
@@ -66,6 +67,16 @@ def main(*, legacy: Callable[[int, NamePolicy | None], PublicationInputs] | None
     imp.add_argument("--asset-root", type=Path)
     imp.add_argument("--build-year", type=int)
     imp.add_argument("--name-policy", type=Path)
+    prepare = sub.add_parser("projection-descriptor")
+    prepare.add_argument("corpus", type=Path)
+    prepare.add_argument("output", type=Path)
+    prepare.add_argument("--target-runtime", required=True)
+    publication_arguments(prepare)
+    imp.add_argument("--target-runtime", default="")
+    imp.add_argument("--descriptor", type=Path)
+    imp.add_argument("--descriptor-sha256", default="")
+    for command in (compile_cmd, prepare, imp):
+        command.add_argument("--projection-profile", choices=sorted(PROFILES), default=BASELINE)
     publication_arguments(compile_cmd)
     publication_arguments(imp)
     args = parser.parse_args()
@@ -83,7 +94,7 @@ def main(*, legacy: Callable[[int, NamePolicy | None], PublicationInputs] | None
         elif args.command == "migrate":
             migrate_corpus(args.corpus, args.from_version)
             CorpusValidator().validate(args.corpus)
-        elif args.command == "compile":
+        elif args.command in {"compile", "projection-descriptor"}:
             inputs = (
                 load_publication_inputs(args, legacy=legacy)
                 if legacy
@@ -91,17 +102,32 @@ def main(*, legacy: Callable[[int, NamePolicy | None], PublicationInputs] | None
             )
             if args.asset_root is None:
                 raise ValueError("asset root is required")
-            records = CorpusValidator().validate(args.corpus, args.asset_root, require_bytes=True)
-            args.output.parent.mkdir(parents=True, exist_ok=True)
-            args.output.write_bytes(
-                canonical_bytes(
-                    compile_publication(
-                        records,
-                        args.audience,
-                        inputs=inputs,
-                    )
+            validator = CorpusValidator()
+            records = validator.validate(args.corpus, args.asset_root, require_bytes=True)
+            if args.command == "projection-descriptor":
+                public, family, _ = compile_publications(
+                    records,
+                    inputs=inputs,
+                    profile=args.projection_profile,
+                    verified_portraits=validator.verified_portraits,
                 )
-            )
+                document = descriptor(
+                    public,
+                    family,
+                    args.projection_profile,
+                    args.target_runtime,
+                    inputs.metadata()["publication_inputs_digest"],
+                )
+            else:
+                document = compile_publication(
+                    records,
+                    args.audience,
+                    inputs=inputs,
+                    profile=args.projection_profile,
+                    verified_portraits=validator.verified_portraits,
+                )
+            args.output.parent.mkdir(parents=True, exist_ok=True)
+            args.output.write_bytes(canonical_bytes(document))
         elif args.command == "db-migrate":
             import psycopg
 
@@ -129,6 +155,12 @@ def main(*, legacy: Callable[[int, NamePolicy | None], PublicationInputs] | None
                             asset_root=args.asset_root,
                             build_year=args.build_year,
                             publication_inputs=inputs,
+                            profile=args.projection_profile,
+                            target_runtime=args.target_runtime,
+                            descriptor_bytes=args.descriptor.read_bytes()
+                            if args.descriptor
+                            else None,
+                            descriptor_sha256=args.descriptor_sha256,
                             name_policy=inputs.name_policy,
                         ),
                         sort_keys=True,

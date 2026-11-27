@@ -48,7 +48,7 @@ def regular_input(root: Path, name: str) -> str:
 
 def runtime_path(name: str, patterns: list[str]) -> bool:
     parts = relative_path(name).parts
-    if parts[-1] in ('apple-touch-icon.png', 'favicon-32.png', 'favicon.svg'):
+    if parts[-1] in ("apple-touch-icon.png", "favicon-32.png", "favicon.svg"):
         return False
     if parts[:2] != ("src", "genealogy"):
         return False

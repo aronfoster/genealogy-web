@@ -98,6 +98,8 @@ def effective_visibility(records: list[dict[str, Any]], build_year: int) -> dict
                 for c in matching
             ) or any(c["decision"] != "grant" for c in matching):
                 visibility = "withheld"
+        if subjects and visibility == "public":
+            visibility = "family"
         # Publishing testimony words requires separate informant permission.
         if r["type"] in {"persona", "citation"}:
             citation = r if r["type"] == "citation" else indexed.get(r["citation_id"], {})
