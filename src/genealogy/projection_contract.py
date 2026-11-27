@@ -162,3 +162,39 @@ def verify_descriptor(raw: bytes, expected_digest: str, expected: dict[str, Any]
         or strict_json(raw) != expected
     ):
         raise ValueError("projection descriptor does not match accepted target and documents")
+
+
+def verify_serving(
+    store: Any, raw: bytes, expected_digest: str, profile: str, runtime: str, inputs_digest: str
+) -> dict[str, str]:
+    """Measure both least-privileged reader views against the sealed descriptor."""
+    from psycopg import sql
+
+    docs = []
+    tokens = {}
+    for audience in ("public", "family"):
+        with store.open(audience) as repo:
+            row = repo.connection.execute(
+                sql.SQL("SELECT document FROM publication.{}").format(
+                    sql.Identifier(audience + "_document")
+                )
+            ).fetchone()
+            if row is None:
+                raise ValueError("missing serving document")
+            doc = row[0]
+            validate_output(doc, audience, profile)
+            observed = repo.connection.execute(
+                sql.SQL("SELECT category,document FROM {}.entity ORDER BY id").format(repo.schema)
+            ).fetchall()
+            expected = sorted(
+                ((category, row) for category in COLLECTIONS for row in doc[category]),
+                key=lambda pair: pair[1]["id"],
+            )
+            if observed != expected:
+                raise ValueError("serving rows differ from projection")
+            docs.append(doc)
+            tokens[audience] = repo.listing_token()
+    verify_descriptor(
+        raw, expected_digest, descriptor(docs[0], docs[1], profile, runtime, inputs_digest)
+    )
+    return tokens

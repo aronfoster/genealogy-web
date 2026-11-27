@@ -103,7 +103,12 @@ def create_app(
         public_dsn = os.environ.get("GENEALOGY_PUBLIC_DSN", "")
         if not public_dsn.strip():
             raise RuntimeError("GENEALOGY_PUBLIC_DSN must be configured")
-        store = PostgresStore(public_dsn, os.environ.get("GENEALOGY_FAMILY_DSN"))
+        store = PostgresStore(
+            public_dsn,
+            os.environ.get("GENEALOGY_FAMILY_DSN"),
+            public_token=os.environ.get("GENEALOGY_PUBLIC_PROJECTION_TOKEN"),
+            family_token=os.environ.get("GENEALOGY_FAMILY_PROJECTION_TOKEN"),
+        )
         if auth_config:
             if authorize_family is not None:
                 raise RuntimeError("Production auth cannot be replaced by a callback")

@@ -523,3 +523,43 @@ def test_living_person_with_public_grant_stays_family_only(tmp_path, profile):
     public, family = outputs(tmp_path, inputs, profile)
     assert pid not in json.dumps(public)
     assert pid in {r["id"] for r in family["people"]}
+
+
+def test_installed_projection_tokens_and_native_rows(tmp_path, database):
+    from genealogy.projection_contract import verify_serving
+
+    inputs, _, _ = samples(tmp_path)
+    admin, dsns = database
+    public, family = outputs(tmp_path, inputs, ENHANCED)
+    raw = canonical_bytes(descriptor(public, family, ENHANCED, TARGET, inputs.digest))
+    import_corpus(
+        tmp_path / "corpus",
+        admin,
+        "1" * 40,
+        publication_inputs=inputs,
+        build_year=inputs.build_year,
+        asset_root=tmp_path / "assets",
+        profile=ENHANCED,
+        descriptor_bytes=raw,
+        descriptor_sha256=digest(raw),
+        target_runtime=TARGET,
+    )
+    store = PostgresStore(*dsns)
+    tokens = verify_serving(store, raw, digest(raw), ENHANCED, TARGET, inputs.digest)
+    bound = PostgresStore(*dsns, public_token=tokens["public"], family_token=tokens["family"])
+    with bound.open("family") as reader:
+        assert reader.listing_token() == tokens["family"]
+    with pytest.raises(ValueError, match="both audience"):
+        PostgresStore(*dsns, public_token=tokens["public"])
+    with pytest.raises(ValueError, match="descriptor"):
+        verify_serving(store, raw, digest(raw), ENHANCED, "3" * 40, inputs.digest)
+    admin.execute("UPDATE genealogy.serving_entity SET category='unknown' WHERE audience='family'")
+    with pytest.raises(ValueError, match="serving rows"):
+        verify_serving(store, raw, digest(raw), ENHANCED, TARGET, inputs.digest)
+    admin.execute(
+        "UPDATE genealogy.projection_stage SET document=document || '{\"changed\":true}'::jsonb WHERE audience='family'"
+    )
+    with pytest.raises(RuntimeError, match="installed release"), bound.open("family"):
+        pass
+    with bound.open("public") as reader:
+        assert reader.listing_token() == tokens["public"]
