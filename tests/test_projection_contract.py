@@ -525,7 +525,7 @@ def test_living_person_with_public_grant_stays_family_only(tmp_path, profile):
     assert pid in {r["id"] for r in family["people"]}
 
 
-def test_installed_projection_tokens_and_native_rows(tmp_path, database):
+def test_installed_projection_tokens_and_native_rows(tmp_path, database, monkeypatch):
     from genealogy.projection_contract import verify_serving
 
     inputs, _, _ = samples(tmp_path)
@@ -553,6 +553,40 @@ def test_installed_projection_tokens_and_native_rows(tmp_path, database):
         PostgresStore(*dsns, public_token=tokens["public"])
     with pytest.raises(ValueError, match="descriptor"):
         verify_serving(store, raw, digest(raw), ENHANCED, "3" * 40, inputs.digest)
+    monkeypatch.setenv("GENEALOGY_PUBLIC_DSN", dsns[0])
+    monkeypatch.setenv("GENEALOGY_FAMILY_DSN", dsns[1])
+    monkeypatch.setenv("GENEALOGY_PUBLIC_PROJECTION_TOKEN", tokens["public"])
+    monkeypatch.delenv("GENEALOGY_FAMILY_PROJECTION_TOKEN", raising=False)
+    with pytest.raises(ValueError, match="both audience"):
+        create_app()
+    monkeypatch.setenv("GENEALOGY_FAMILY_PROJECTION_TOKEN", tokens["family"])
+    assert TestClient(create_app()).get("/").status_code == 200
+    monkeypatch.setenv("GENEALOGY_PUBLIC_PROJECTION_TOKEN", "public:" + "0" * 64)
+    assert TestClient(create_app()).get("/").status_code == 503
+    for audience in ("public", "family"):
+        links = admin.execute(
+            "DELETE FROM genealogy.serving_subject WHERE audience=%s RETURNING generation,audience,assertion_id,role,ref_id",
+            (audience,),
+        ).fetchall()
+        assert links
+        with pytest.raises(ValueError, match="subject links"):
+            verify_serving(store, raw, digest(raw), ENHANCED, TARGET, inputs.digest)
+        with admin.cursor() as cur:
+            cur.executemany(
+                "INSERT INTO genealogy.serving_subject(generation,audience,assertion_id,role,ref_id) VALUES (%s,%s,%s,%s,%s)",
+                links,
+            )
+        gen, aud, assertion, role, ref = links[0]
+        admin.execute(
+            "UPDATE genealogy.serving_subject SET role='incorrect' WHERE (generation,audience,assertion_id,role,ref_id)=(%s,%s,%s,%s,%s)",
+            links[0],
+        )
+        with pytest.raises(ValueError, match="subject links"):
+            verify_serving(store, raw, digest(raw), ENHANCED, TARGET, inputs.digest)
+        admin.execute(
+            "UPDATE genealogy.serving_subject SET role=%s WHERE (generation,audience,assertion_id,role,ref_id)=(%s,%s,%s,'incorrect',%s)",
+            (role, gen, aud, assertion, ref),
+        )
     admin.execute("ALTER VIEW publication.public_document RENAME TO single_public_document")
     admin.execute(
         "CREATE VIEW publication.public_document AS SELECT document FROM publication.single_public_document CROSS JOIN generate_series(1,2)"

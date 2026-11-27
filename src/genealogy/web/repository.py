@@ -173,6 +173,8 @@ class PostgresStore:
                     )
                 )
                 repository = Repository(connection, audience)
+                # Startup measures entity rows and assertion links. This transaction
+                # binds its document token across normal publication changes.
                 token = self.tokens[audience]
                 if token is not None and repository.listing_token() != token:
                     raise RuntimeError("Serving projection differs from installed release")
