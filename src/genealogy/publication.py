@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from collections.abc import Mapping
 from typing import Any
 
 from .classification import classify_people
@@ -21,7 +22,7 @@ def compile_publication(
     *,
     inputs: PublicationInputs,
     profile: str = BASELINE,
-    verified_portraits: frozenset[tuple[str, str]] = frozenset(),
+    verified_portraits: Mapping[tuple[str, str], tuple[int, int]] | None = None,
 ) -> dict[str, Any]:
     """Compile a closed audience graph using only explicit validated inputs."""
     records = sorted(records, key=lambda r: r["id"])
@@ -40,7 +41,7 @@ def compile_publications(
     *,
     inputs: PublicationInputs,
     profile: str = BASELINE,
-    verified_portraits: frozenset[tuple[str, str]] = frozenset(),
+    verified_portraits: Mapping[tuple[str, str], tuple[int, int]] | None = None,
 ) -> tuple[dict[str, Any], dict[str, Any], dict[str, str]]:
     """Compile both audiences and decisions from the same immutable input snapshot."""
     records = sorted(records, key=lambda r: r["id"])
@@ -58,7 +59,7 @@ def _compile_publication(
     effective: dict[str, str],
     inputs: PublicationInputs,
     profile: str,
-    verified_portraits: frozenset[tuple[str, str]],
+    verified_portraits: Mapping[tuple[str, str], tuple[int, int]] | None,
 ) -> dict[str, Any]:
     name_policy = inputs.name_policy
     if audience not in {"public", "family"}:
@@ -74,7 +75,9 @@ def _compile_publication(
     if profile not in PROFILES:
         raise ValueError("unsupported projection profile")
     superseded = superseded_ids(records)
-    fields = select_fields(records, visible, audience, profile, superseded, verified_portraits)
+    fields = select_fields(
+        records, visible, audience, profile, superseded, verified_portraits or {}
+    )
     # Fixed point: dropping an endpoint can invalidate another endpoint or narrative.
     while True:
         remove = {

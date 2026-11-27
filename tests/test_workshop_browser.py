@@ -25,8 +25,17 @@ def test_workshop_history_freeze(tmp_path):
 
 
 def test_workshop_audience_and_overlay_controls(tmp_path):
-    assert set(VARIANTS) == {"public", "family", "source-preview", "names-public",
-        "names-family", "historical", "auth", "prototype", "indicators"}
+    assert set(VARIANTS) == {
+        "public",
+        "family",
+        "source-preview",
+        "names-public",
+        "names-family",
+        "historical",
+        "auth",
+        "prototype",
+        "indicators",
+    }
     args = argparse.Namespace(inputs=materialize(tmp_path, historical=False))
     input_options(args)
     inputs = load_publication_inputs(args)

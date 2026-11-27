@@ -182,12 +182,53 @@
             "asset_id": {
               "type": "string",
               "pattern": "^ast_[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+            },
+            "width": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 2048
+            },
+            "height": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 2048
             }
           },
           "required": [
             "asset_id"
           ],
-          "additionalProperties": false
+          "additionalProperties": false,
+          "dependentRequired": {
+            "width": [
+              "height"
+            ],
+            "height": [
+              "width"
+            ]
+          }
+        },
+        "profile_citations": {
+          "type": "object",
+          "minProperties": 1,
+          "additionalProperties": false,
+          "properties": {
+            "favorite_color": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": {
+                "$ref": "#/$defs/citations/properties/id"
+              }
+            },
+            "profile_photo": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": {
+                "$ref": "#/$defs/citations/properties/id"
+              }
+            }
+          }
         }
       },
       "required": [

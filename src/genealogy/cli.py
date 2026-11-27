@@ -109,7 +109,7 @@ def main(*, legacy: Callable[[int, NamePolicy | None], PublicationInputs] | None
                     records,
                     inputs=inputs,
                     profile=args.projection_profile,
-                    verified_portraits=frozenset(validator.verified_portraits),
+                    verified_portraits=validator.verified_portraits,
                 )
                 document = descriptor(
                     public,
@@ -124,7 +124,7 @@ def main(*, legacy: Callable[[int, NamePolicy | None], PublicationInputs] | None
                     args.audience,
                     inputs=inputs,
                     profile=args.projection_profile,
-                    verified_portraits=frozenset(validator.verified_portraits),
+                    verified_portraits=validator.verified_portraits,
                 )
             args.output.parent.mkdir(parents=True, exist_ok=True)
             args.output.write_bytes(canonical_bytes(document))

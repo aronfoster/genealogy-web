@@ -3,6 +3,7 @@ import copy
 import hashlib
 import json
 import os
+import re
 import struct
 import subprocess
 import sys
@@ -21,6 +22,7 @@ from starlette.testclient import TestClient
 from genealogy.importer import import_corpus
 from genealogy.input_options import load_publication_inputs
 from genealogy.model import canonical_bytes, write_record
+from genealogy.policy import effective_visibility
 from genealogy.portrait import safe_png
 from genealogy.projection_contract import BASELINE, ENHANCED, descriptor, digest, validate_output
 from genealogy.publication import compile_publications
@@ -141,7 +143,7 @@ def outputs(root, inputs, profile):
         records,
         inputs=inputs,
         profile=profile,
-        verified_portraits=frozenset(validator.verified_portraits),
+        verified_portraits=validator.verified_portraits,
     )[:2]
 
 
@@ -164,7 +166,7 @@ def test_visible_profile_and_downgrade(tmp_path, audience):
                 for r in doc["assertions"]
             )
             if expected:
-                assert row["profile_photo"] == {"asset_id": asset["id"]}
+                assert row["profile_photo"] == {"asset_id": asset["id"], "width": 1, "height": 1}
                 assert row["favorite_color"] == "teal <blue>"
 
 
@@ -426,7 +428,7 @@ def test_http_and_sql_across_generations(tmp_path, database, request):
                 assert not {"etag", "last-modified", "location"} & set(response.headers)
 
 
-def test_public_photo_catalog_and_bytes(tmp_path, database):
+def test_public_photo_catalog_and_bytes(tmp_path, database, monkeypatch):
     inputs, person, asset = samples(tmp_path, "public")
     admin, dsns = database
     public, family = outputs(tmp_path, inputs, ENHANCED)
@@ -447,15 +449,77 @@ def test_public_photo_catalog_and_bytes(tmp_path, database):
         descriptor_sha256=digest(raw),
         target_runtime=TARGET,
     )
-    client = TestClient(create_app(store=PostgresStore(*dsns), portrait_root=tmp_path / "assets"))
+    session = {"approved": False}
+    client = TestClient(
+        create_app(
+            store=PostgresStore(*dsns),
+            portrait_root=tmp_path / "assets",
+            authorize_family=lambda _: session["approved"],
+        )
+    )
     url = "/portraits/public/" + asset["id"]
-    assert client.get("/api/people/" + person).json()["profile_photo"] == {
+    profile = client.get("/api/people/" + person).json()
+    assert profile["profile_photo"] == {
         "url": url,
         "attribution": "Workshop artist",
+        "width": 1,
+        "height": 1,
     }
+    for field, n in (("favorite_color", 1), ("profile_photo", 600)):
+        (link,) = profile[field + "_sources"]
+        page, anchor = link["url"].split("#")
+        assert anchor == identifier("citation", n, historical=True)
+        assert 'id="' + anchor + '"' in client.get(page).text
     assert url in client.get("/sources/" + asset["source_id"]).text
     assert url in client.get("/api/sources/" + asset["source_id"]).text
+    calls = []
+
+    def counted(data):
+        calls.append(len(data))
+        return safe_png(data)
+
+    monkeypatch.setattr("genealogy.web.app.safe_png", counted)
     assert client.get(url).content == png()
     assert client.get(url.replace("/public/", "/family/")).status_code == 404
+    session["approved"] = True
+    fallback = client.get("/people/" + person + "?public=1")
+    (src,) = re.findall(r'<img src="([^"]+)" alt="Portrait of ', fallback.text)
+    assert src == url and 'width="1" height="1"' in fallback.text
+    assert client.get(src).content == png()
+    assert client.get(src, headers={"Range": "bytes=0-3"}).content == png()[:4]
+    assert calls == [len(png())]
     (tmp_path / "assets" / asset["sha256"]).write_bytes(b"changed derivative")
     assert client.get(url).status_code == 404
+    assert calls == [len(png())]
+
+
+@pytest.mark.parametrize("profile", [BASELINE, ENHANCED])
+def test_living_person_with_public_grant_stays_family_only(tmp_path, profile):
+    inputs, _, _ = samples(tmp_path)
+    pid = identifier("person", 750, historical=True)
+    common = {"schema_version": 1, "retired": False}
+    write_record(
+        tmp_path / "corpus", {**common, "type": "person", "id": pid, "visibility": "public"}
+    )
+    write_record(
+        tmp_path / "corpus",
+        {
+            **common,
+            "type": "consent",
+            "id": identifier("consent", 750, historical=True),
+            "visibility": "admin",
+            "decision": "grant",
+            "audience": "public",
+            "recorded_at": "2026-01-01",
+            "method": "Invented workshop permission",
+            "person_id": pid,
+            "scope": [pid],
+        },
+    )
+    records = CorpusValidator().validate(
+        tmp_path / "corpus", tmp_path / "assets", require_bytes=True
+    )
+    assert effective_visibility(records, inputs.build_year)[pid] == "family"
+    public, family = outputs(tmp_path, inputs, profile)
+    assert pid not in json.dumps(public)
+    assert pid in {r["id"] for r in family["people"]}

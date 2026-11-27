@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from typing import Any
 
 from .model import VISIBILITY_RANK
@@ -16,7 +17,7 @@ def select_fields(
     audience: str,
     profile: str,
     superseded: set[str],
-    verified_portraits: frozenset[tuple[str, str]],
+    verified_portraits: Mapping[tuple[str, str], tuple[int, int]],
 ) -> dict[str, Record]:
     rights: dict[tuple[str, str], list[Record]] = {}
     for r in records:
@@ -74,7 +75,8 @@ def select_fields(
         if not evidence:
             continue
         if typ == "person.favorite_color":
-            fields.setdefault(subject, {})["favorite_color"] = claim["value"]["text"]
+            field = "favorite_color"
+            fields.setdefault(subject, {})[field] = claim["value"]["text"]
         else:
             aid = claim["value"]["asset_id"]
             asset = visible.get(aid, {})
@@ -93,9 +95,17 @@ def select_fields(
                 or not any(c["source_id"] == source.get("id") for c in evidence)
             ):
                 continue
-            fields.setdefault(subject, {})["profile_photo"] = {"asset_id": aid}
+            field = "profile_photo"
+            width, height = verified_portraits[aid, asset["sha256"]]
+            fields.setdefault(subject, {})[field] = {
+                "asset_id": aid,
+                "width": width,
+                "height": height,
+            }
             retained_assets.add(aid)
-        retained_evidence.update(c["id"] for c in evidence)
+        citation_ids = sorted({c["id"] for c in evidence})
+        fields[subject].setdefault("profile_citations", {})[field] = citation_ids
+        retained_evidence.update(citation_ids)
 
     for rid, r in list(visible.items()):
         if "portrait" in r and rid not in retained_assets:

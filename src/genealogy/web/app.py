@@ -6,9 +6,11 @@ import hashlib
 import logging
 import os
 import traceback
+from collections import OrderedDict
 from collections.abc import Callable
 from importlib.resources import files
 from pathlib import Path
+from threading import Lock
 from typing import Any
 from urllib.parse import urlencode, urlsplit
 
@@ -71,6 +73,24 @@ def create_app(
     EVERY request. Readers without authorization see only public records. asset_url
     must return a short-lived HTTPS URL for the supplied authorized asset only.
     """
+    # Keep only verified digests in this app's bounded cache, never image bytes or permissions.
+    validated_pngs: OrderedDict[str, None] = OrderedDict()
+    png_lock = Lock()
+
+    def valid_derivative(checksum: str, data: bytes) -> bool:
+        if hashlib.sha256(data).hexdigest() != checksum:
+            return False
+        with png_lock:
+            if checksum in validated_pngs:
+                validated_pngs.move_to_end(checksum)
+                return True
+            if not safe_png(data):
+                return False
+            validated_pngs[checksum] = None
+            if len(validated_pngs) > 256:
+                validated_pngs.popitem(last=False)
+        return True
+
     if portrait_root is None and os.environ.get("GENEALOGY_PORTRAIT_ROOT"):
         portrait_root = Path(os.environ["GENEALOGY_PORTRAIT_ROOT"])
     if store is None:
@@ -197,11 +217,19 @@ def create_app(
             )
         offset = int(offset_text)
         try:
-            audience: Audience = (
-                ("family" if authorize_family and authorize_family(request) else "public")
-                if api or route in {"asset", "portrait"}
-                else document_audience(request)
-            )
+            audience: Audience
+            if route == "portrait":
+                scope = request.path_params["audience"]
+                if scope == "public":
+                    audience = "public"
+                elif scope == "family" and authorize_family and authorize_family(request):
+                    audience = "family"
+                else:
+                    raise NotFound
+            elif api or route == "asset":
+                audience = "family" if authorize_family and authorize_family(request) else "public"
+            else:
+                audience = document_audience(request)
             with store.open(audience) as repository:
                 presenter = Presenter(repository, hosted_copies_enabled=bool(asset_url))
                 data: Record
@@ -234,7 +262,22 @@ def create_app(
                             data["profile_photo"] = {
                                 "url": f"/portraits/{audience}/{aid}",
                                 "attribution": derivative["portrait_attribution"],
+                                **{
+                                    k: row["profile_photo"][k]
+                                    for k in ("width", "height")
+                                    if k in row["profile_photo"]
+                                },
                             }
+                    for field, citations in row.get("profile_citations", {}).items():
+                        if field in data:
+                            sources = [presenter.citation(cid) for cid in citations]
+                            data[field + "_sources"] = [
+                                {
+                                    "title": c["source"]["title"],
+                                    "url": record_url("sources", c["source"]["id"], c["id"]),
+                                }
+                                for c in sources
+                            ]
                     title = data["name"]
                 elif route == "family":
                     data = presenter.family(rid)
@@ -283,7 +326,7 @@ def create_app(
                 elif route == "portrait":
                     # Scope is a restriction on the URL. Session and the current
                     # serving view independently decide authority for every fetch.
-                    if audience != request.path_params["audience"] or portrait_root is None:
+                    if portrait_root is None:
                         raise NotFound
                     asset = repository.get(rid, ["assets"])
                     if (
@@ -292,7 +335,7 @@ def create_app(
                         or not asset.get("bytes_available")
                     ):
                         raise NotFound
-                    return portrait_response(request, asset, portrait_root)
+                    return portrait_response(request, asset, portrait_root, valid_derivative)
                 elif route == "asset":
                     asset = repository.get(rid, ["assets"])
                     if (
@@ -533,7 +576,9 @@ def create_app(
     return app
 
 
-def portrait_response(request: Request, asset: Record, root: Path) -> Response:
+def portrait_response(
+    request: Request, asset: Record, root: Path, validate: Callable[[str, bytes], bool]
+) -> Response:
     # The holder of a URL never receives a reusable storage credential. Files
     # are already stripped derivatives, named by their verified content digest.
     import re
@@ -546,7 +591,7 @@ def portrait_response(request: Request, asset: Record, root: Path) -> Response:
         raise NotFound
     with path.open("rb") as handle:
         data = handle.read(MAX_BYTES + 1)
-    if hashlib.sha256(data).hexdigest() != checksum or not safe_png(data):
+    if not validate(checksum, data):
         raise NotFound
     headers = {"Accept-Ranges": "bytes"}
     requested = request.headers.get("range")

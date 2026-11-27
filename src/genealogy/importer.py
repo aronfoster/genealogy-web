@@ -112,7 +112,7 @@ def import_corpus(
         records,
         inputs=publication_inputs,
         profile=profile,
-        verified_portraits=frozenset(validator.verified_portraits),
+        verified_portraits=validator.verified_portraits,
     )
     if (
         descriptor_bytes is not None

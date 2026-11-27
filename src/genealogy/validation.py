@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+import struct
 import time
 import uuid
 from dataclasses import dataclass
@@ -49,7 +50,7 @@ class CorpusValidator:
         self.value_schema = json.loads(
             directory.joinpath("assertion-values.schema.json").read_text()
         )
-        self.verified_portraits: set[tuple[str, str]] = set()
+        self.verified_portraits: dict[tuple[str, str], tuple[int, int]] = {}
         self.unverified_assets: list[str] = []
         self.warnings: list[Violation] = []
         Draft202012Validator.check_schema(self.entity_schema)
@@ -238,7 +239,9 @@ class CorpusValidator:
                             fail("asset.hash_mismatch", r)
                         elif "portrait" in r:
                             if safe_png(data):
-                                self.verified_portraits.add((r["id"], r["sha256"]))
+                                self.verified_portraits[r["id"], r["sha256"]] = struct.unpack_from(
+                                    ">II", data, 16
+                                )
                             else:
                                 fail("portrait.invalid_derivative", r)
                     else:

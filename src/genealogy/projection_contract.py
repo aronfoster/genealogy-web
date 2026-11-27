@@ -115,6 +115,13 @@ def validate_output(doc: dict[str, Any], audience: str, profile: str) -> None:
                 and {"favorite_color", "profile_photo", "portrait_attribution"} & row.keys()
             ):
                 raise ValueError("feature in baseline projection")
+            for field, citations in row.get("profile_citations", {}).items():
+                if (
+                    profile == BASELINE
+                    or field not in row
+                    or any(cid not in by_id or "source_id" not in by_id[cid] for cid in citations)
+                ):
+                    raise ValueError("invalid profile citation")
             if "profile_photo" in row:
                 target = by_id.get(row["profile_photo"]["asset_id"], {})
                 if not target.get("bytes_available") or not target.get("portrait_attribution"):

@@ -43,6 +43,11 @@ jobs:
           uv pip install --no-deps --target "$RUNNER_TEMP/old-reader" "$RUNNER_TEMP"/old-dist/*.whl
           uv build --wheel --out-dir "$RUNNER_TEMP/current-dist"
           uv pip install --no-deps --reinstall --python .venv/bin/python "$RUNNER_TEMP"/current-dist/*.whl
+      - name: Check Python formatting, lint and types
+        run: |
+          uv run --locked ruff format --check .
+          uv run --locked ruff check .
+          uv run --locked mypy src
       - name: Synthetic database, HTTP and released-reader compatibility
         run: |
           if ! command -v nginx >/dev/null; then
